@@ -1,4 +1,4 @@
-# TaskFlow — Flutter Todo App
+# TaskFlow — Flutter Task Manager App
 
 A senior-level take-home project demonstrating Clean Architecture, Riverpod state management, Isar persistence, and a modular, testable codebase.
 
@@ -183,3 +183,4 @@ The `TodoRepository` interface is the seam. To add cloud sync:
 | `freezed` | Immutable models (ready for expansion) |
 | `uuid` | Unique task IDs |
 | `gap` | Spacing utility |
+
