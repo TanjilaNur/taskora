@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/task.dart';
-import '../../domain/usecases/todo/create_task_usecase.dart';
+import '../../domain/usecases/task/create_task_usecase.dart';
 import '../providers/providers.dart';
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ class TaskListNotifier extends StateNotifier<TaskListState> {
   }
 }
 
-final todoListProvider =
+final taskListProvider =
 StateNotifierProvider<TaskListNotifier, TaskListState>(
       (ref) => TaskListNotifier(ref),
 );

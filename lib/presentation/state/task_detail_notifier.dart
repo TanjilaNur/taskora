@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/task.dart';
-import '../../domain/usecases/todo/create_task_usecase.dart';
+import '../../domain/usecases/task/create_task_usecase.dart';
 import '../providers/providers.dart';
 
 sealed class TaskDetailState {
@@ -33,7 +33,7 @@ class TaskDetailNotifier extends StateNotifier<TaskDetailState> {
 
   Future<void> load() async {
     final result =
-    await _ref.read(todoRepositoryProvider).getTaskById(taskId);
+    await _ref.read(taskRepositoryProvider).getTaskById(taskId);
     result.fold(
       ok: (t) => state = TaskDetailLoaded(t),
       err: (e) => state = TaskDetailError(e.toString()),

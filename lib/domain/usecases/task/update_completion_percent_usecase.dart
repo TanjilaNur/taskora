@@ -3,7 +3,7 @@ import '../../repositories/task_manager_repository.dart';
 import '../../../core/utils/result.dart';
 
 class UpdateCompletionPercentUseCase {
-  final TodoRepository _repository;
+  final TaskRepository _repository;
   const UpdateCompletionPercentUseCase(this._repository);
 
   Future<Result<Task>> call(String id, double percent) =>

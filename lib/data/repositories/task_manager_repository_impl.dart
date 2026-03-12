@@ -9,7 +9,7 @@ import '../datasources/task_local_datasource.dart';
 import '../models/task_model.dart';
 import '../models/task_model_mapper.dart';
 
-class TaskManagerRepositoryImpl implements TodoRepository {
+class TaskManagerRepositoryImpl implements TaskRepository {
   final TaskLocalDataSource _dataSource;
   final Uuid _uuid;
 

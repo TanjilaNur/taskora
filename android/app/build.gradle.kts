@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.todo_app"
+    namespace = "com.example.taskora"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

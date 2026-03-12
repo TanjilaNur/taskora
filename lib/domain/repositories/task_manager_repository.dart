@@ -3,7 +3,7 @@ import '../../core/utils/result.dart';
 
 /// Abstract contract. The domain layer depends only on this interface,
 /// never on the concrete Isar implementation.
-abstract interface class TodoRepository {
+abstract interface class TaskRepository {
   /// Fetch all root-level tasks (parentId == null) with full subtask trees.
   Future<Result<List<Task>>> getRootTasks();
 

@@ -4,7 +4,7 @@ import '../../../core/utils/result.dart';
 import '../../../core/errors/failures.dart';
 
 class UpdateTaskUseCase {
-  final TodoRepository _repository;
+  final TaskRepository _repository;
   const UpdateTaskUseCase(this._repository);
 
   Future<Result<Task>> call(Task task) async {

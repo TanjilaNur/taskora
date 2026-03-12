@@ -22,7 +22,7 @@ class CreateTaskParams {
 }
 
 class CreateTaskUseCase {
-  final TodoRepository _repository;
+  final TaskRepository _repository;
   const CreateTaskUseCase(this._repository);
 
   Future<Result<Task>> call(CreateTaskParams params) async {

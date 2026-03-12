@@ -11,14 +11,14 @@ import 'package:file_picker/file_picker.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../domain/entities/task.dart';
-import '../../../domain/usecases/todo/create_task_usecase.dart';
+import '../../../domain/usecases/task/create_task_usecase.dart';
 import '../../state/task_list_notifier.dart';
 import '../../providers/providers.dart';
-import '../../widgets/todo/task_card.dart';
+import '../../widgets/task/task_card.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/shimmer_list.dart';
-import '../../widgets/todo/task_form_sheet.dart';
-import '../../widgets/todo/task_detail_sheet.dart';
+import '../../widgets/task/task_form_sheet.dart';
+import '../../widgets/task/task_detail_sheet.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -32,7 +32,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(todoListProvider);
+    final state = ref.watch(taskListProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -77,7 +77,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             activeFilter: _activeFilter,
             onFilterChanged: (f) {
               setState(() => _activeFilter = f);
-              ref.read(todoListProvider.notifier).setFilter(f);
+              ref.read(taskListProvider.notifier).setFilter(f);
             },
           ),
           Expanded(
@@ -93,7 +93,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     const Gap(12),
                     ElevatedButton(
                       onPressed: () =>
-                          ref.read(todoListProvider.notifier).load(),
+                          ref.read(taskListProvider.notifier).load(),
                       child: const Text('Retry'),
                     ),
                   ],
@@ -122,7 +122,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       builder: (ctx) => TaskFormSheet(
         title: '✨ Create New Todo',
         onSubmit: (title, description, imagePath, dueDate, priority) {
-          ref.read(todoListProvider.notifier).createTask(
+          ref.read(taskListProvider.notifier).createTask(
             CreateTaskParams(
               title: title,
               description: description,
@@ -186,7 +186,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     await ref.read(importBackupUseCaseProvider).call(bytes.toList());
     result.fold(
       ok: (_) {
-        ref.read(todoListProvider.notifier).load();
+        ref.read(taskListProvider.notifier).load();
         _showSnack('Backup restored successfully!');
       },
       err: (e) => _showSnack('Import failed: $e'),
@@ -217,7 +217,7 @@ class _TaskList extends ConsumerWidget {
           task: task,
           onTap: () => _openDetail(context, ref, task),
           onToggle: () =>
-              ref.read(todoListProvider.notifier).toggleCompletion(task.id),
+              ref.read(taskListProvider.notifier).toggleCompletion(task.id),
           onDelete: () => _confirmDelete(context, ref, task),
         )
             .animate(delay: (i * 50).ms)
@@ -233,7 +233,7 @@ class _TaskList extends ConsumerWidget {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (ctx) => TaskDetailSheet(taskId: task.id),
-    ).then((_) => ref.read(todoListProvider.notifier).load());
+    ).then((_) => ref.read(taskListProvider.notifier).load());
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref, Task task) {
@@ -252,7 +252,7 @@ class _TaskList extends ConsumerWidget {
                 backgroundColor: Theme.of(context).colorScheme.errorContainer),
             onPressed: () {
               Navigator.pop(ctx);
-              ref.read(todoListProvider.notifier).deleteTask(task.id);
+              ref.read(taskListProvider.notifier).deleteTask(task.id);
             },
             child: const Text('Delete'),
           ),

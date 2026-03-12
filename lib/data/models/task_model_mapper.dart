@@ -23,7 +23,7 @@ extension TaskModelMapper on TaskModel {
   }
 }
 
-extension TodoTaskMapper on Task {
+extension TaskMapper on Task {
   TaskModel toModel() {
     return TaskModel.create(
       id: id,
