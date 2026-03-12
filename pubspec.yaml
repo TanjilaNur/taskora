@@ -65,7 +65,7 @@ flutter:
 
 
 #name: todo_app
-#description: A Flutter Todo app with Clean Architecture, Riverpod, and Isar.
+#description: A Flutter Task manager app with Clean Architecture, Riverpod, and Isar.
 #publish_to: 'none'
 #version: 1.0.0+1
 #
