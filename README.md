@@ -1,4 +1,4 @@
-# TaskFlow — Flutter Task Manager App
+# Taskora — Flutter Task Manager App
 
 A senior-level take-home project demonstrating Clean Architecture, Riverpod state management, Isar persistence, and a modular, testable codebase.
 
