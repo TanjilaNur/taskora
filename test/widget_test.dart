@@ -1,4 +1,4 @@
-// Widget-level smoke test for TaskFlow.
+// Widget-level smoke test for Taskora.
 //
 // Full unit test coverage lives in:
 //   test/unit/presentation/state/task_list_notifier_test.dart

@@ -441,7 +441,7 @@ The `version` field enables future schema migrations on import. The file is shar
 
 ### Restore flow
 1. User taps **Import Backup** from the app menu
-2. File picker opens — user selects a `.taskflow_backup` file
+2. File picker opens — user selects a `.taskora_backup` file
 3. Confirmation dialog: *"This will replace ALL current tasks. Are you sure?"*
 4. On confirm: `deleteAll()` → `saveModels(parsed tasks)` → list refreshed
 
@@ -510,25 +510,56 @@ flutter test test/unit/presentation/state/task_list_notifier_test.dart --reporte
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Flutter `3.19+`
-- Dart `3.0+`
-- Xcode (for iOS/macOS builds)
-- Android Studio / NDK (for Android builds)
+- Flutter `3.19+` · Dart `3.0+`
+- Xcode `15+` (iOS / macOS)
+- Android Studio + NDK (Android)
 
-### Setup
+### 1 — Install dependencies
 ```bash
-# 1. Install dependencies
 flutter pub get
+```
 
-# 2. Generate Isar schema + code-gen files
+### 2 — Generate Isar schema & code-gen files *(required before first build)*
+```bash
 dart run build_runner build --delete-conflicting-outputs
+```
 
-# 3. Run on a connected device or emulator
+### 3 — Run on any device
+```bash
 flutter run
 ```
 
-### iOS permissions
-Add to `ios/Runner/Info.plist`:
+---
+
+### 🍎 Running in Xcode (iOS)
+
+#### Step 1 — Install CocoaPods dependencies
+```bash
+cd ios && pod install && cd ..
+```
+> If `pod install` fails run `pod repo update` first, then retry.
+
+#### Step 2 — Open the workspace *(not the project)*
+```bash
+open ios/Runner.xcworkspace
+```
+> ⚠️ Always open **`Runner.xcworkspace`** — never `Runner.xcodeproj`. Opening `.xcodeproj` skips CocoaPods and the build will fail.
+
+#### Step 3 — Select a simulator or real device
+In the Xcode toolbar click the device picker next to ▶ and choose a simulator (e.g. **iPhone 16**) or a connected device.
+
+#### Step 4 — Signing *(real device only)*
+1. Click the **Runner** project icon in the left panel
+2. **Runner target → Signing & Capabilities**
+3. Set **Team** to your Apple Developer account
+4. Set **Bundle Identifier** to something unique, e.g. `com.yourname.taskora`
+
+#### Step 5 — Build & Run
+Press **⌘ R**. First build takes 2–5 min (Isar + pods compile from source). Subsequent builds are fast.
+
+---
+
+### ℹ️ iOS Permissions *(already in `ios/Runner/Info.plist`)*
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
 <string>Used to pick task thumbnail images</string>
@@ -538,12 +569,24 @@ Add to `ios/Runner/Info.plist`:
 <string>Used to save task thumbnail images</string>
 ```
 
-### Android permissions
-Add to `android/app/src/main/AndroidManifest.xml`:
+### 🤖 Android Permissions *(already in `AndroidManifest.xml`)*
 ```xml
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 <uses-permission android:name="android.permission.CAMERA"/>
 ```
+
+---
+
+### 🛠 Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `pod install` version conflict | `pod repo update && pod install` |
+| `Runner.xcworkspace` not found | `flutter pub get` → `pod install` |
+| `No such module 'isar_flutter_libs'` | `dart run build_runner build --delete-conflicting-outputs` then rebuild |
+| Signing error on real device | Set Apple Team in Xcode → Signing & Capabilities |
+| Blank white screen on simulator | `flutter clean && flutter pub get` then rebuild |
+| Stale cache build errors | Xcode → **Product → Clean Build Folder** (⇧⌘K) then rebuild |
 
 ---
 
