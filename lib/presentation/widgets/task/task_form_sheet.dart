@@ -3,18 +3,15 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_strings.dart';
 import '../../../domain/entities/task.dart';
+import '../../providers/providers.dart';
 
-class TaskFormSheet extends StatefulWidget {
+class TaskFormSheet extends ConsumerStatefulWidget {
   final String title;
   final String? initialTitle;
   final String? initialDescription;
@@ -46,10 +43,10 @@ class TaskFormSheet extends StatefulWidget {
   });
 
   @override
-  State<TaskFormSheet> createState() => _TaskFormSheetState();
+  ConsumerState<TaskFormSheet> createState() => _TaskFormSheetState();
 }
 
-class _TaskFormSheetState extends State<TaskFormSheet> {
+class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _urlCtrl;
@@ -192,7 +189,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                           const Gap(4),
                           Expanded(
                             child: Text(
-                              'URL set: $_pendingImageUrl',
+                              '${AppStrings.imageUrlSet}$_pendingImageUrl',
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: Colors.green.shade700,
@@ -300,31 +297,18 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   Future<void> _pickImage({bool fromCamera = false}) async {
     setState(() => _pickingImage = true);
     try {
-      final picker = ImagePicker();
-      final xfile = await picker.pickImage(
-          source: fromCamera ? ImageSource.camera : ImageSource.gallery);
-      if (xfile == null) return;
-
-      final dir = await getApplicationDocumentsDirectory();
-      final imagesDir = Directory(p.join(dir.path, 'task_images'));
-      if (!imagesDir.existsSync()) await imagesDir.create(recursive: true);
-
-      final destPath = p.join(imagesDir.path, '${const Uuid().v4()}.jpg');
-      final result = await FlutterImageCompress.compressAndGetFile(
-        xfile.path,
-        destPath,
-        minWidth: 250,
-        minHeight: 250,
-        quality: 85,
-        format: CompressFormat.jpeg,
-      );
-      if (result != null) {
-        setState(() {
-          _imagePath = result.path;
-          _pendingImageUrl = null; // file takes priority
+      final imageService = ref.read(imageServiceProvider);
+      final result = fromCamera
+          ? await imageService.pickFromCamera()
+          : await imageService.pickFromGallery();
+      result.fold(
+        ok: (path) => setState(() {
+          _imagePath = path;
+          _pendingImageUrl = null;
           _urlCtrl.clear();
-        });
-      }
+        }),
+        err: (_) {}, // user cancelled — do nothing
+      );
     } finally {
       setState(() => _pickingImage = false);
     }
@@ -346,47 +330,23 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
 
     setState(() => _downloadingUrl = true);
     try {
-      final client = HttpClient();
-      final req = await client
-          .headUrl(uri)
-          .timeout(const Duration(seconds: 8));
-      final resp = await req.close();
-      client.close();
-
-      if (resp.statusCode >= 200 && resp.statusCode < 400) {
-        setState(() {
-          _pendingImageUrl = url;
-          _imagePath = null;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(AppStrings.imageUrlSetting),
-            ),
-          );
-        }
+      final ok = await ref.read(imageServiceProvider).validateUrl(url);
+      if (ok) {
+        setState(() { _pendingImageUrl = url; _imagePath = null; });
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.imageUrlSetting)),
+        );
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${AppStrings.imageUrlUnreachable}${resp.statusCode})'),
-            ),
-          );
-        }
-      }
-    } catch (_) {
-      // Accept anyway — server might reject HEAD but serve GET fine
-      setState(() {
-        _pendingImageUrl = url;
-        _imagePath = null;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(AppStrings.imageUrlSaved),
-            ),
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.imageUrlUnreachable)),
         );
       }
+    } catch (_) {
+      // Server may reject HEAD but serve GET fine — accept anyway
+      setState(() { _pendingImageUrl = url; _imagePath = null; });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.imageUrlSaved)),
+      );
     } finally {
       setState(() => _downloadingUrl = false);
     }

@@ -61,7 +61,7 @@ class AppStrings {
   static const String imageUrlSetting      = 'Image URL set — will be downloaded on save';
   static const String imageUrlSaved        = 'URL saved (could not verify — will try on save)';
   static const String imageUrlInvalid      = 'Please enter a valid URL';
-  static const String imageUrlUnreachable  = 'URL not reachable (';
+  static const String imageUrlUnreachable  = 'URL not reachable — please check and try again';
   static const String tapToSelect          = 'Tap to select or take a photo';
 
   // ── Task detail sheet ──────────────────────────────────────────────────────
@@ -86,6 +86,7 @@ class AppStrings {
 
   // ── Subtask tile ───────────────────────────────────────────────────────────
   static const String subtaskExpandHint = 'subtasks · Tap to expand';
+  static const String tapToExpand       = 'Tap to expand';
 
   // ── Task card status labels ────────────────────────────────────────────────
   static const String statusCompleted = '✓ Completed';

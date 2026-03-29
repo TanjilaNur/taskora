@@ -40,20 +40,19 @@ class ImageService {
 
   Future<Result<String>> _compressAndSave(String sourcePath) async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
+      final dir      = await getApplicationDocumentsDirectory();
       final imagesDir = Directory(p.join(dir.path, 'task_images'));
       if (!imagesDir.existsSync()) await imagesDir.create(recursive: true);
 
-      final fileName = '${_uuid.v4()}.jpg';
-      final destPath = p.join(imagesDir.path, fileName);
+      final destPath = p.join(imagesDir.path, '${_uuid.v4()}.jpg');
 
       final compressed = await FlutterImageCompress.compressAndGetFile(
         sourcePath,
         destPath,
-        minWidth: AppConstants.thumbnailSize,
+        minWidth:  AppConstants.thumbnailSize,
         minHeight: AppConstants.thumbnailSize,
-        quality: AppConstants.imageQuality,
-        format: CompressFormat.jpeg,
+        quality:   AppConstants.imageQuality,
+        format:    CompressFormat.jpeg,
       );
 
       if (compressed == null) return Err(Exception('Compression failed'));
@@ -69,30 +68,46 @@ class ImageService {
     if (await file.exists()) await file.delete();
   }
 
+  /// Returns true if the URL responds with a 2xx/3xx status — false otherwise.
+  /// Used by the form sheet to validate URLs before saving.
+  Future<bool> validateUrl(String url) async {
+    try {
+      final client  = HttpClient();
+      final request = await client.headUrl(Uri.parse(url))
+          .timeout(const Duration(seconds: 8));
+      final response = await request.close();
+      client.close();
+      return response.statusCode >= 200 && response.statusCode < 400;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<Result<String>> downloadAndCacheUrl(String url) async {
     try {
-      final client = HttpClient();
-      final request = await client.getUrl(Uri.parse(url));
+      final client   = HttpClient();
+      final request  = await client.getUrl(Uri.parse(url));
       final response = await request.close();
 
       if (response.statusCode != 200) {
         return Err(Exception('Failed to download image: ${response.statusCode}'));
       }
 
-      final bytes = await consolidateHttpClientResponseBytes(response);
-      final dir = await getApplicationDocumentsDirectory();
+      // Consolidate chunked response into a single byte list
+      final bytes = await _consolidateBytes(response);
+
+      final dir      = await getApplicationDocumentsDirectory();
       final imagesDir = Directory(p.join(dir.path, 'task_images'));
       if (!imagesDir.existsSync()) await imagesDir.create(recursive: true);
 
-      final fileName = '${_uuid.v4()}.jpg';
-      final destPath = p.join(imagesDir.path, fileName);
+      final destPath = p.join(imagesDir.path, '${_uuid.v4()}.jpg');
 
       final compressed = await FlutterImageCompress.compressWithList(
         bytes,
-        minWidth: AppConstants.thumbnailSize,
+        minWidth:  AppConstants.thumbnailSize,
         minHeight: AppConstants.thumbnailSize,
-        quality: AppConstants.imageQuality,
-        format: CompressFormat.jpeg,
+        quality:   AppConstants.imageQuality,
+        format:    CompressFormat.jpeg,
       );
 
       await File(destPath).writeAsBytes(compressed);
@@ -101,14 +116,13 @@ class ImageService {
       return Err(Exception('URL image download failed: $e'));
     }
   }
-}
 
-// Helper from Flutter internals to consolidate streamed bytes
-Future<Uint8List> consolidateHttpClientResponseBytes(
-    HttpClientResponse response) async {
-  final chunks = <List<int>>[];
-  await for (final chunk in response) {
-    chunks.add(chunk);
+  /// Collects all chunks from an [HttpClientResponse] into a single [Uint8List].
+  Future<Uint8List> _consolidateBytes(HttpClientResponse response) async {
+    final chunks = <List<int>>[];
+    await for (final chunk in response) {
+      chunks.add(chunk);
+    }
+    return Uint8List.fromList(chunks.expand((x) => x).toList());
   }
-  return Uint8List.fromList(chunks.expand((x) => x).toList());
 }

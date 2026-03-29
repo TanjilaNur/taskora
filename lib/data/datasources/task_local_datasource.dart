@@ -40,15 +40,13 @@ class TaskLocalDataSource {
     await _db.writeTxn(() => _db.taskModels.putAll(models));
   }
 
-  /// Collects all descendant IDs then deletes them in one transaction.
+  /// Collects all descendant IDs then deletes them in a single bulk operation.
   Future<void> deleteWithChildren(String id) async {
     final allModels = await getAllModels();
-    final toDelete = _collectIds(id, allModels);
-    await _db.writeTxn(() async {
-      for (final tid in toDelete) {
-        await _db.taskModels.filter().idEqualTo(tid).deleteFirst();
-      }
-    });
+    final toDelete  = _collectIds(id, allModels).toList();
+    await _db.writeTxn(() =>
+      _db.taskModels.filter().anyOf(toDelete, (q, tid) => q.idEqualTo(tid)).deleteAll()
+    );
   }
 
   /// Wipes the entire tasks table (used before a backup restore).

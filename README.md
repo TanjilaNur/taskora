@@ -110,7 +110,7 @@ Root %  = (0 + 100 + 100 + 50 + 0) / 5 = 50%
 
 ### Backup & Restore
 - **Export**: serialises all tasks to a JSON file, shared via the system share sheet
-- **Import**: picks a `.taskflow_backup` file, shows a confirmation warning, then **replaces** all existing tasks (not merges — see [design decision](#backup-replace-not-merge))
+- **Import**: picks a `.taskora_backup` file, shows a confirmation warning, then **replaces** all existing tasks (not merges — see [design decision](#backup-replace-not-merge))
 
 ### Theme
 - Light, Dark, and System modes available
@@ -437,7 +437,7 @@ When a task image is **replaced or removed**, the old local file is deleted from
 }
 ```
 
-The `version` field enables future schema migrations on import. The file is shared via the system share sheet as a `.taskflow_backup` file.
+The `version` field enables future schema migrations on import. The file is shared via the system share sheet as a `.taskora_backup` file.
 
 ### Restore flow
 1. User taps **Import Backup** from the app menu

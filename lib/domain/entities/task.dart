@@ -55,7 +55,7 @@ class Task {
   /// 1 = root, 4 = deepest allowed level.
   final int depth;
 
-  const Task({
+  Task({
     required this.id,
     required this.title,
     this.description,
@@ -85,26 +85,26 @@ class Task {
   /// Leaf value:
   ///   - completed           → 100%
   ///   - not completed       → manualCompletionPercent (0–100 via slider)
+  /// Lazily cached leaf values — computed once, reused by all three getters.
+  List<double>? _cachedLeaves;
+  List<double> get _leaves => _cachedLeaves ??= _collectLeaves();
+
   double get completionPercentage {
-    final leaves = _collectLeaves();
+    final leaves = _leaves;
     if (leaves.isEmpty) {
-      // This node itself is a leaf
       return isCompleted ? 100.0 : manualCompletionPercent;
     }
-    final total = leaves.fold(0.0, (sum, leaf) => sum + leaf);
-    return total / leaves.length;
+    return leaves.fold(0.0, (sum, v) => sum + v) / leaves.length;
   }
 
   /// Recursively collects the completion value of every leaf in the subtree.
   List<double> _collectLeaves() {
-    if (subtasks.isEmpty) return []; // caller handles the leaf case
+    if (subtasks.isEmpty) return [];
     final result = <double>[];
     for (final sub in subtasks) {
       if (sub.subtasks.isEmpty) {
-        // Direct leaf — use its own value
         result.add(sub.isCompleted ? 100.0 : sub.manualCompletionPercent);
       } else {
-        // Intermediate node — recurse and collect its leaves
         result.addAll(sub._collectLeaves());
       }
     }
@@ -117,13 +117,11 @@ class Task {
   bool get isOverdue =>
       dueDate != null && !isCompleted && dueDate!.isBefore(DateTime.now());
 
-  /// Number of leaf tasks in this subtree that are fully complete.
-  int get completedSubtaskCount => _collectLeaves()
-      .where((v) => v >= 100.0)
-      .length;
+  /// Number of leaf tasks fully complete.
+  int get completedSubtaskCount => _leaves.where((v) => v >= 100.0).length;
 
-  /// Total number of leaf tasks in this subtree.
-  int get totalSubtaskCount => _collectLeaves().length;
+  /// Total leaf task count.
+  int get totalSubtaskCount => _leaves.length;
 
   Task copyWith({
     String? id,

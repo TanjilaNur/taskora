@@ -100,7 +100,7 @@ class SubtaskTile extends StatelessWidget {
                 const Gap(4),
                 // Tap to expand hint
                 Text(
-                  '${subtask.subtasks.length} subtask${subtask.subtasks.length > 1 ? 's' : ''} · ${AppStrings.subtaskExpandHint.replaceFirst('subtasks · ', '')}',
+                  '${subtask.subtasks.length} subtask${subtask.subtasks.length > 1 ? 's' : ''} · ${AppStrings.tapToExpand}',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
