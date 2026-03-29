@@ -1,127 +1,530 @@
-# Taskora — Flutter Task Manager App
+# TaskFlow — Flutter Task Manager
 
-A senior-level take-home project demonstrating Clean Architecture, Riverpod state management, Isar persistence, and a modular, testable codebase.
+> A Flutter application demonstrating **Clean Architecture**, **Riverpod** state management, **Isar** local persistence, hierarchical task management, and a comprehensive unit test suite.
 
 ---
 
-## 🏗️ Architecture
+## 📑 Table of Contents
 
-This project follows **Clean Architecture** — each layer has a single responsibility and depends only inward.
+1. [Overview](#-overview)
+2. [Features](#-features)
+3. [Architecture](#-architecture)
+4. [Project Structure](#-project-structure)
+5. [Data Layer](#-data-layer)
+6. [State Management](#-state-management)
+7. [Key Design Decisions](#-key-design-decisions)
+8. [Navigation](#-navigation)
+9. [Image Management](#-image-management)
+10. [Backup & Restore](#-backup--restore)
+11. [Testing](#-testing)
+12. [Getting Started](#-getting-started)
+13. [Dependencies](#-dependencies)
+14. [Future Roadmap](#-future-roadmap)
+
+---
+
+## 🗺 Overview
+
+**TaskFlow** is a comprehensive offline-first task management app. Users can create tasks, nest subtasks up to **4 levels deep**, attach thumbnail images, track hierarchical completion percentages, and back up their data — all without an internet connection.
+
+The app was built against a formal product specification and satisfies every core requirement plus all bonus points:
+
+| Requirement | Status |
+|---|---|
+| CRUD on tasks | ✅ |
+| Delete with confirmation dialog | ✅ |
+| Nested subtasks (3 levels below root = 4 total) | ✅ |
+| Task thumbnail — gallery, camera, URL | ✅ |
+| Image compressed to 250×250 px | ✅ |
+| Bottom sheet modal with full CRUD | ✅ |
+| Independent navigation stack inside modal | ✅ |
+| Device back button handled inside modal | ✅ |
+| Hierarchical completion % (recursive) | ✅ |
+| Completion date displayed on completed tasks | ✅ |
+| Completing all subtasks auto-completes parent | ✅ |
+| Isar local database with indexed queries | ✅ |
+| Cascade delete on task hierarchies | ✅ |
+| Offline-first | ✅ |
+| **Bonus** — Clean Architecture | ✅ |
+| **Bonus** — Backup export / import (JSON) | ✅ |
+| **Bonus** — Dark / Light / System theme, persisted | ✅ |
+| **Bonus** — Partial completion slider (leaf tasks) | ✅ |
+| **Bonus** — Shimmer loading skeletons | ✅ |
+| **Bonus** — Subtle animations (flutter_animate) | ✅ |
+| **Bonus** — Filter: All / Active / Completed | ✅ |
+| **Bonus** — Due dates & overdue indicators | ✅ |
+| **Bonus** — Task priority (Low / Medium / High) | ✅ |
+
+---
+
+## ✨ Features
+
+### Core CRUD
+- **Create** tasks with title, optional description, image, due date, and priority
+- **Read** all tasks on the home list with filter chips (All / Active / Done)
+- **Update** any task's fields via the edit form — pre-fills all existing values
+- **Delete** with a confirmation dialog — cascade-deletes all child subtasks
+
+### Hierarchical Tasks
+- Main tasks can have subtasks, which can have sub-subtasks — up to **4 levels total**
+- The Add Subtask button is hidden at depth 4 to prevent further nesting
+- Each level shows its own completion percentage and subtask count
+
+### Completion System
+```
+Root Task  ──── completionPercentage
+  │               = average of all direct subtask percentages (recursive)
+  ├─ Subtask A ── 100% (completed)
+  ├─ Subtask B ── 50%  (manual slider, no children)
+  └─ Subtask C ── completionPercentage
+       ├─ Sub C1 ── 100%
+       └─ Sub C2 ── 0%   → C = 50%, Root = (100 + 50 + 50) / 3 = 66%
+```
+- Completing all subtasks automatically marks the parent complete
+- Un-completing a subtask automatically reverts the parent
+- Leaf tasks (no subtasks) use a **slider** for partial completion (0–100%)
+- Completed tasks display their exact completion date (`Completed Mar 29, 2026`)
+
+### Images
+- Pick from **gallery** or **camera**, or paste an **image URL**
+- Images are automatically **compressed to 250×250 px / JPEG / 85% quality**
+- Only the compressed version is stored — originals are discarded
+- URL images are downloaded, compressed, and cached locally on save
+- Fallback to a default placeholder when no image is set
+- Images can be updated or removed at any time
+
+### Backup & Restore
+- **Export**: serialises all tasks to a JSON file, shared via the system share sheet
+- **Import**: picks a `.taskflow_backup` file, shows a confirmation warning, then **replaces** all existing tasks (not merges — see [design decision](#backup-replace-not-merge))
+
+### Theme
+- Light, Dark, and System modes available
+- Selection is **persisted** via `SharedPreferences` and restored on next launch
+
+---
+
+## 🏗 Architecture
+
+The project strictly follows **Clean Architecture** with three concentric layers:
+
+```
+┌─────────────────────────────────────────────┐
+│               Presentation                  │  Flutter widgets, Riverpod notifiers
+├─────────────────────────────────────────────┤
+│                  Domain                     │  Pure Dart — entities, use cases, repo interface
+├─────────────────────────────────────────────┤
+│                   Data                      │  Isar models, ImageService, repo implementation
+└─────────────────────────────────────────────┘
+```
+
+**Dependency rule**: arrows always point inward. The domain layer knows nothing about Flutter, Isar, or Riverpod.
+
+### Layer Responsibilities
+
+| Layer | Contains | Depends On |
+|---|---|---|
+| **Domain** | `Task` entity, `TaskRepository` interface, use cases | Nothing |
+| **Data** | `TaskModel`, `TaskLocalDataSource`, `ImageService`, `TaskManagerRepositoryImpl` | Domain interfaces only |
+| **Presentation** | Pages, widgets, `StateNotifier`s, Riverpod providers | Domain use cases only |
+| **Core** | `Result<T>`, `AppFailure` types, `AppTheme`, `AppRouter`, constants | Nothing |
+
+---
+
+## 📁 Project Structure
 
 ```
 lib/
-├── core/                         # Shared utilities, constants, DI-agnostic
+├── core/
 │   ├── constants/
-│   ├── errors/                   # Failure types
-│   ├── router/                   # go_router setup
-│   ├── theme/                    # Material3 themes + ThemeMode provider
-│   └── utils/                    # Result<T> type
+│   │   └── app_constants.dart        # thumbnailSize=250, maxDepth=4, backup extension
+│   ├── errors/
+│   │   └── failures.dart             # DatabaseFailure, ImageFailure, ValidationFailure, BackupFailure
+│   ├── router/
+│   │   └── app_router.dart           # GoRouter — single '/' route to HomePage
+│   ├── theme/
+│   │   ├── app_theme.dart            # Material 3 light + dark ThemeData
+│   │   └── theme_provider.dart       # ThemeModeNotifier — persisted via SharedPreferences
+│   └── utils/
+│       └── result.dart               # sealed Result<T> { Ok<T> | Err<T> }
 │
-├── domain/                       # Pure Dart — no Flutter, no packages
-│   ├── entities/                 # TodoTask entity
-│   ├── repositories/             # Abstract interface (TodoRepository)
-│   └── usecases/                 # One class per use case
+├── domain/
+│   ├── entities/
+│   │   └── task.dart                 # Pure Task entity + TaskPriority enum + copyWith
+│   ├── repositories/
+│   │   └── task_manager_repository.dart  # Abstract interface — 9 methods
+│   └── usecases/
+│       ├── task/
+│       │   ├── create_task_usecase.dart      # Validates title, enforces depth ≤ 4
+│       │   ├── update_task_usecase.dart      # Validates title, stamps updatedAt
+│       │   ├── delete_task_usecase.dart      # Delegates to repo (cascade handled in data)
+│       │   ├── get_root_tasks_usecase.dart   # Returns full task trees
+│       │   ├── toggle_completion_usecase.dart
+│       │   └── update_completion_percent_usecase.dart  # Clamps 0–100
+│       └── backup/
+│           └── backup_usecases.dart  # ExportBackupUseCase, ImportBackupUseCase
 │
-├── data/                         # Repository implementation + data sources
-│   ├── datasources/              # IsarService, TaskLocalDataSource, ImageService
-│   ├── models/                   # Isar-annotated TaskModel + mapper
-│   └── repositories/             # TodoRepositoryImpl
+├── data/
+│   ├── datasources/
+│   │   ├── isar_service.dart         # Singleton Isar initialiser
+│   │   ├── task_local_datasource.dart # Raw CRUD + cascade delete on flat TaskModel
+│   │   └── image_service.dart        # Pick/compress/save/delete/download images
+│   ├── models/
+│   │   ├── task_model.dart           # @Collection Isar model with @Index on parentId
+│   │   ├── task_model.g.dart         # Isar-generated schema (do not edit)
+│   │   └── task_model_mapper.dart    # toEntity() / toModel() extension methods
+│   └── repositories/
+│       └── task_manager_repository_impl.dart  # Full implementation incl. tree assembly,
+│                                              # cascade complete, propagateUpward
 │
-└── presentation/                 # Flutter UI
-    ├── pages/                    # Route-level pages
-    ├── providers/                # Riverpod DI providers
-    ├── state/                    # StateNotifiers (business logic for UI)
-    └── widgets/                  # Reusable, composable widgets
+└── presentation/
+    ├── pages/
+    │   └── home/
+    │       └── home_page.dart        # Task list, filter bar, FAB, backup menu
+    ├── providers/
+    │   └── providers.dart            # All Riverpod providers wired together
+    ├── state/
+    │   ├── task_list_notifier.dart   # TaskListState — Loading/Loaded/Error + filter
+    │   └── task_detail_notifier.dart # TaskDetailState — for the bottom sheet
+    └── widgets/
+        ├── common/
+        │   ├── empty_state.dart
+        │   └── shimmer_list.dart
+        └── task/
+            ├── task_card.dart        # List item — thumbnail, progress, delete, swipe
+            ├── task_detail_sheet.dart # Bottom sheet with nested Navigator
+            ├── task_form_sheet.dart  # Create / Edit form with image picker
+            └── subtask_tile.dart     # Subtask row with percent indicator
 ```
 
 ---
 
-## 📐 Key Architectural Decisions
+## 💾 Data Layer
 
-### Why Clean Architecture?
-- **Testability**: Domain layer has zero framework dependencies. Use cases and entities are plain Dart — testable without mocking Flutter.
-- **Scalability**: Swapping Isar for a remote API only touches the `data` layer.
-- **Separation of concerns**: Each layer communicates through abstractions (interfaces), not concrete implementations.
+### Entity vs Model separation
 
-### Why Riverpod (not Bloc)?
-- **Type-safe**: `Provider.family`, `StateNotifierProvider` catch mistakes at compile time.
-- **No boilerplate**: Bloc requires Events + States + Bloc class per feature. Riverpod's `StateNotifier` is leaner.
-- **DI built-in**: Riverpod replaces service locators like GetIt. Providers *are* the dependency injection container.
-- **Code generation ready**: `riverpod_generator` + `riverpod_annotation` for zero-boilerplate providers in future iterations.
+The `Task` domain entity is **pure Dart** — no Isar annotations, no JSON annotations:
 
-### Why Isar (not Hive)?
-| | Hive | Isar |
-|---|---|---|
-| Querying | Manual, limited | Full query builder with indexes |
-| Relations | None native | Native via IsarLinks |
-| Performance | Good | Excellent (written in Rust) |
-| Schema migration | Manual | Built-in |
-| Cascade delete | Manual | Native |
+```dart
+class Task {
+  final String id;
+  final String title;
+  final String? description;
+  final bool isCompleted;
+  final double manualCompletionPercent;  // used by leaf slider
+  final String? parentId;
+  final String? imagePath;
+  final String? imageUrl;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? completedAt;           // stamped when toggled complete
+  final DateTime? dueDate;
+  final TaskPriority priority;
+  final List<Task> subtasks;             // assembled in memory, not stored flat
+  final int depth;
+}
+```
 
-Isar is the successor recommended by the Hive author. For a task hierarchy with indexed parentId queries and future migration support, Isar is the stronger choice.
+The `TaskModel` is the Isar-annotated counterpart. It stores tasks **flat** in the database — one row per task, linked by `parentId`. The tree is assembled in memory by `_buildTree()` in the repository.
 
-### Why `Result<T>` instead of exceptions?
-Exceptions that cross layer boundaries create invisible contracts. A `Result<T>` sealed class makes error handling explicit and type-safe at every call site — the compiler forces you to handle both `Ok` and `Err`.
+### Tree Assembly
+
+```
+DB (flat):
+  id=1, parentId=null  ← root
+  id=2, parentId=1     ← subtask
+  id=3, parentId=2     ← sub-subtask
+
+In memory after _buildTree(null):
+  Task(id=1, subtasks=[
+    Task(id=2, subtasks=[
+      Task(id=3, subtasks=[])
+    ])
+  ])
+```
+
+### Cascade Delete
+
+`TaskLocalDataSource.deleteWithChildren()` recursively collects all descendant IDs first, then deletes them all in a single write transaction — no orphaned records possible.
+
+### Cascade Completion
+
+When a task is toggled complete:
+1. The task itself is marked complete + `completedAt` stamped
+2. `_cascadeComplete()` marks all descendants complete recursively
+3. `_propagateUpward()` walks up the `parentId` chain — if **all siblings** are now complete, the parent is auto-completed too. If a task is un-completed, the parent is reverted.
+
+### Result Type
+
+Every repository method returns `Result<T>` — a sealed class:
+
+```dart
+sealed class Result<T>
+final class Ok<T>  extends Result<T> { final T data; }
+final class Err<T> extends Result<T> { final Exception exception; }
+```
+
+Usage at the call site:
+```dart
+result.fold(
+  ok:  (data) => // handle success,
+  err: (e)    => // handle failure,
+);
+```
+
+This makes error paths **impossible to ignore** — the compiler enforces both branches.
 
 ---
 
-## ✅ Features Implemented
+## ⚙️ State Management
 
-| Feature | Status |
-|---|---|
-| CRUD on tasks | ✅ |
-| 3-level nested subtasks (4 levels total) | ✅ |
-| Task thumbnail (gallery, camera, URL) | ✅ |
-| Image compression to 250×250 | ✅ |
-| Image caching locally | ✅ |
-| Bottom sheet modal | ✅ |
-| Nested Navigator inside modal | ✅ |
-| Back navigation within modal | ✅ |
-| Recursive completion % calculation | ✅ |
-| Completion date display | ✅ |
-| Cascade completion of subtasks | ✅ |
-| Slider for partial completion (leaf tasks) | ✅ (Bonus) |
-| Isar local database | ✅ |
-| Offline-first | ✅ |
-| Export / Import backup (JSON) | ✅ (Bonus) |
-| Dark/Light theme toggle | ✅ (Bonus) |
-| Shimmer loading | ✅ (Bonus) |
-| Filter: All / Active / Completed | ✅ |
-| Delete confirmation dialog | ✅ |
-| Smooth animations (flutter_animate) | ✅ (Bonus) |
+### `TaskListState` (home screen)
+
+```
+TaskListLoading  — initial / during any reload
+TaskListLoaded   — holds List<Task> + active filter string
+TaskListError    — holds error message string
+```
+
+`TaskListLoaded.filteredTasks` is a computed getter:
+- Sorts by `createdAt` descending (newest first)
+- Filters by `'active'`, `'completed'`, or `null` (all)
+
+**Filter persistence**: the current filter is captured before every `load()` call and restored afterward — switching tabs never resets the active filter.
+
+**All mutating methods** (`createTask`, `updateTask`, `deleteTask`, `toggleCompletion`) follow the same pattern:
+```dart
+result.fold(
+  ok:  (_) => load(),              // refresh list on success
+  err: (e) => state = TaskListError(e.toString()),  // surface error on failure
+);
+```
+
+### `TaskDetailState` (bottom sheet)
+
+```
+TaskDetailLoading  — while fetching the task by ID
+TaskDetailLoaded   — holds the full Task with subtree
+TaskDetailError    — holds error message
+```
+
+Every operation in `TaskDetailNotifier` (`addSubtask`, `updateTask`, `toggleCompletion`, `deleteSubtask`, `pickImage`, `setImageFromUrl`, `removeImage`) uses `result.fold` — no errors are silently swallowed.
+
+---
+
+## 🎨 Key Design Decisions
+
+### `Result<T>` over exceptions
+Exceptions thrown across layer boundaries create invisible contracts — callers don't know a method can fail unless they read the source. `Result<T>` makes failure a first-class citizen that the type system enforces at every call site.
+
+### Flat storage, in-memory tree
+Storing tasks flat (one row per task, linked by `parentId`) means:
+- Simple indexed queries (`parentId == x`)
+- No recursive DB transactions needed
+- Easy cascade delete (collect IDs, delete in one `writeTxn`)
+- The tree depth can change without schema migration
+
+The trade-off is tree assembly on every read — acceptable for the task volumes this app targets.
+
+### Image: compressed only, original discarded
+The spec defines thumbnails as 250×250 visual identifiers, not archival photos. Storing originals alongside compressed copies would double storage consumption with zero user benefit. The compressed JPEG is all that is saved.
+
+### Backup: replace, not merge
+On import, `deleteAll()` runs before `saveModels()`. Merge semantics would require conflict resolution per UUID — if the same task ID exists in both the database and the backup file, the correct behaviour is ambiguous (keep newer? keep local? keep backup?). Replace semantics are unambiguous, safe, and clearly communicated to the user via the confirmation dialog: *"This will replace ALL current tasks."*
+
+### Isar over Hive
+| | Hive | Isar |
+|---|---|---|
+| Query builder | ❌ manual | ✅ full |
+| Indexes | ❌ none | ✅ `@Index` |
+| Performance | good | excellent (Rust core) |
+| Schema migration | manual | built-in |
+| Cascade operations | manual | native |
+
+Isar is the successor recommended by the Hive author and the stronger choice for any app with relational data.
+
+### Riverpod over Bloc
+Bloc requires an Event class + State class + Bloc class per feature — three files minimum. Riverpod's `StateNotifier` is one class. Providers are also the DI container, eliminating the need for `GetIt` or similar. Type safety is equivalent; ceremony is far less.
+
+---
+
+## 🧭 Navigation
+
+The app uses **two independent navigation stacks**:
+
+```
+GoRouter (main app stack)
+  └── '/'  →  HomePage
+
+Bottom Sheet (modal stack — separate Navigator)
+  └── _TaskDetailPage(depth=1)      ← tapped task
+        └── _TaskDetailPage(depth=2) ← tapped subtask
+              └── _TaskDetailPage(depth=3) ← tapped sub-subtask
+```
+
+`PopScope` intercepts the Android hardware back button inside the modal:
+- If the modal navigator has pages to pop → go back one level in the hierarchy
+- If at the root level of the modal → close the bottom sheet entirely
+
+This satisfies the spec requirement: *"Proper reaction of device navigation buttons."*
+
+---
+
+## 🖼 Image Management
+
+```
+User action
+    │
+    ├── Gallery / Camera
+    │     ImagePicker → temp XFile
+    │     FlutterImageCompress.compressAndGetFile()
+    │         minWidth: 250, minHeight: 250
+    │         quality: 85, format: JPEG
+    │     Saved to: {appDocDir}/task_images/{uuid}.jpg
+    │     task.imagePath = saved path
+    │
+    └── URL
+          HEAD request to validate URL reachability
+          On save: HttpClient.getUrl() → download bytes
+          FlutterImageCompress.compressWithList()
+          Saved to: {appDocDir}/task_images/{uuid}.jpg
+          task.imagePath = saved path
+          task.imageUrl  = original URL (for reference)
+```
+
+When a task image is **replaced or removed**, the old local file is deleted from disk by `ImageService.deleteImage()` before the new path is written — no orphaned files accumulate.
+
+---
+
+## 💾 Backup & Restore
+
+### Export format
+```json
+{
+  "version": 2,
+  "tasks": [
+    {
+      "id": "uuid",
+      "title": "Buy milk",
+      "description": null,
+      "isCompleted": false,
+      "manualCompletionPercent": 0.0,
+      "parentId": null,
+      "imagePath": "/path/to/image.jpg",
+      "imageUrl": null,
+      "createdAt": "2026-03-29T10:00:00.000Z",
+      "updatedAt": "2026-03-29T10:00:00.000Z",
+      "completedAt": null,
+      "dueDate": null,
+      "priority": 1,
+      "depth": 1
+    }
+  ]
+}
+```
+
+The `version` field enables future schema migrations on import. The file is shared via the system share sheet as a `.taskflow_backup` file.
+
+### Restore flow
+1. User taps **Import Backup** from the app menu
+2. File picker opens — user selects a `.taskflow_backup` file
+3. Confirmation dialog: *"This will replace ALL current tasks. Are you sure?"*
+4. On confirm: `deleteAll()` → `saveModels(parsed tasks)` → list refreshed
+
+---
+
+## 🧪 Testing
+
+### Strategy
+The Clean Architecture layering makes each layer independently testable:
+
+```
+test/
+└── unit/
+    └── presentation/
+        └── state/
+            └── task_list_notifier_test.dart   ← 48 tests, 100% pass
+```
+
+### How it works
+
+**Mocking**: Every use case is replaced with a `mocktail` mock via `ProviderContainer` overrides:
+```dart
+ProviderContainer(
+  overrides: [
+    getRootTasksUseCaseProvider.overrideWithValue(MockGetRootTasksUseCase()),
+    createTaskUseCaseProvider.overrideWithValue(MockCreateTaskUseCase()),
+    // ...
+  ],
+)
+```
+
+**No database, no Flutter**: Tests run in pure Dart — zero disk I/O, millisecond execution.
+
+**`Result<T>` in mocks**: Mocks return your exact types:
+```dart
+when(() => mockCreate.call(any())).thenAnswer(
+  (_) async => createError
+      ? Err(Exception('create error'))   // Err constructor from result.dart
+      : Ok(makeTask()),                   // Ok constructor from result.dart
+);
+```
+
+### Test Groups & Coverage
+
+| Group | Tests | What's Verified |
+|---|---|---|
+| Initial State | 6 | `TaskListLoading` on init, `TaskListLoaded` on success, `TaskListError` on failure |
+| `filteredTasks` | 9 | All/active/completed filters, unknown filter, empty list, `createdAt` sort order |
+| `copyWith` | 4 | Tasks preserved, filter preserved, `clearFilter`, no-arg |
+| `createTask` | 4 | Success → reload, **BUG-01 regression** (error → `TaskListError` not reload), filter persistence |
+| `updateTask` | 3 | Success, **BUG-06** (method was missing), filter persistence |
+| `deleteTask` | 5 | Success, **BUG-02 regression** (error → `TaskListError` not null), empty list, filter persistence |
+| `toggleCompletion` | 4 | Success, **BUG-03 regression** (error not swallowed), filter persistence |
+| `setFilter` | 5 | Active/completed/null, no-op when loading, tasks list preserved |
+| Filter persistence | 5 | **BUG-04 regression** — filter survives load/create/delete/toggle/update |
+| State transitions | 3 | Loading→Loaded, Loading→Error, filter survives full reload cycle |
+| **Total** | **48** | **100% pass** ✅ |
+
+### Run the tests
+```bash
+flutter test test/unit/presentation/state/task_list_notifier_test.dart --reporter=expanded
+```
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Flutter 3.19+
-- Dart 3.0+
+- Flutter `3.19+`
+- Dart `3.0+`
+- Xcode (for iOS/macOS builds)
+- Android Studio / NDK (for Android builds)
 
 ### Setup
-
 ```bash
-# Clone and install
+# 1. Install dependencies
 flutter pub get
 
-# Generate Isar schema + Riverpod code
+# 2. Generate Isar schema + code-gen files
 dart run build_runner build --delete-conflicting-outputs
 
-# Run
+# 3. Run on a connected device or emulator
 flutter run
 ```
 
-### iOS-specific
-Ensure your `Info.plist` includes:
+### iOS permissions
+Add to `ios/Runner/Info.plist`:
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
 <string>Used to pick task thumbnail images</string>
 <key>NSCameraUsageDescription</key>
 <string>Used to capture task thumbnail images</string>
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Used to save task thumbnail images</string>
 ```
 
-### Android-specific
-In `AndroidManifest.xml`:
+### Android permissions
+Add to `android/app/src/main/AndroidManifest.xml`:
 ```xml
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 <uses-permission android:name="android.permission.CAMERA"/>
@@ -129,58 +532,59 @@ In `AndroidManifest.xml`:
 
 ---
 
-## 🧪 Testing Strategy
-
-The Clean Architecture structure makes testing straightforward:
-
-```
-test/
-├── domain/
-│   ├── usecases/           # Unit test each use case with mock repository
-│   └── entities/           # Test completionPercentage calculation
-├── data/
-│   └── repositories/       # Integration test with in-memory Isar instance
-└── presentation/
-    └── state/              # Widget test StateNotifiers with ProviderContainer
-```
-
-Example use case test (no Flutter needed):
-```dart
-test('createTask fails when title is empty', () async {
-  final useCase = CreateTaskUseCase(MockTodoRepository());
-  final result = await useCase(CreateTaskParams(title: ''));
-  expect(result.isErr, true);
-});
-```
-
----
-
-## 🔮 Future Cloud Sync
-
-The `TodoRepository` interface is the seam. To add cloud sync:
-
-1. Create `CloudTodoRepositoryImpl` implementing `TodoRepository`.
-2. Create `SyncedTodoRepositoryImpl` wrapping both local and cloud.
-3. Swap the provider — zero changes to domain or presentation layers.
-
----
-
 ## 📦 Dependencies
 
-| Package | Purpose |
-|---|---|
-| `flutter_riverpod` | State management & DI |
-| `isar` + `isar_flutter_libs` | Local database |
-| `go_router` | Navigation |
-| `image_picker` | Gallery/camera access |
-| `flutter_image_compress` | Thumbnail compression |
-| `cached_network_image` | URL image caching |
-| `flutter_animate` | Animations |
-| `percent_indicator` | Progress bars |
-| `shimmer` | Loading skeletons |
-| `share_plus` | Backup export |
-| `file_picker` | Backup import |
-| `freezed` | Immutable models (ready for expansion) |
-| `uuid` | Unique task IDs |
-| `gap` | Spacing utility |
+### Production
+| Package | Version | Purpose |
+|---|---|---|
+| `flutter_riverpod` | ^2.5.1 | State management & dependency injection |
+| `isar` + `xxf_isar_flutter_libs` | ^3.1.0 | Local database (Rust-powered, indexed) |
+| `go_router` | ^13.2.0 | Declarative navigation |
+| `image_picker` | ^1.1.2 | Gallery & camera image selection |
+| `flutter_image_compress` | ^2.2.0 | 250×250 JPEG compression |
+| `cached_network_image` | ^3.3.1 | URL image display with caching |
+| `flutter_animate` | ^4.5.0 | Entrance & transition animations |
+| `percent_indicator` | ^4.2.3 | Linear progress bars in subtask tiles |
+| `shimmer` | ^3.0.0 | Loading skeleton screens |
+| `share_plus` | ^9.0.0 | Backup file export via share sheet |
+| `file_picker` | ^8.0.3 | Backup file import |
+| `shared_preferences` | ^2.5.5 | Theme mode persistence |
+| `path_provider` | ^2.1.3 | App documents directory for image storage |
+| `uuid` | ^4.4.0 | Task ID generation |
+| `intl` | ^0.19.0 | Date formatting |
+| `gap` | ^3.0.1 | Spacing utility |
 
+### Development
+| Package | Version | Purpose |
+|---|---|---|
+| `mocktail` | ^1.0.4 | Mock generation for unit tests |
+| `build_runner` | ^2.4.9 | Code generation runner |
+| `isar_generator` | ^3.1.0 | Isar schema generation |
+| `riverpod_generator` | ^2.4.0 | Riverpod provider generation |
+| `freezed` | ^2.5.2 | Immutable model generation |
+| `flutter_lints` | ^3.0.0 | Lint rules |
+
+---
+
+## 🔮 Future Roadmap
+
+### Cloud Sync
+The `TaskRepository` interface is the seam point. To add cloud sync:
+1. Create `RemoteTaskRepositoryImpl` implementing `TaskRepository`
+2. Create `SyncedTaskRepositoryImpl` composing local + remote
+3. Swap the provider in `providers.dart` — **zero changes** to domain or presentation layers
+
+### Potential Enhancements
+- [ ] Task search / full-text filtering
+- [ ] Push notifications for due date reminders
+- [ ] Drag-and-drop task reordering
+- [ ] Task tags / labels
+- [ ] Recurring tasks
+- [ ] iCloud / Google Drive backup destination
+- [ ] Widget (home screen glanceable task count)
+
+---
+
+## 📄 Licence
+
+This project was built as a take-home technical assessment. All rights reserved.

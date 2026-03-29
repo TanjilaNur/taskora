@@ -10,6 +10,8 @@ class CreateTaskParams {
   final int depth;
   final DateTime? dueDate;
   final TaskPriority priority;
+  final String? imagePath;
+  final String? imageUrl;
 
   const CreateTaskParams({
     required this.title,
@@ -18,6 +20,8 @@ class CreateTaskParams {
     this.depth = 1,
     this.dueDate,
     this.priority = TaskPriority.medium,
+    this.imagePath,
+    this.imageUrl,
   });
 }
 
@@ -42,6 +46,8 @@ class CreateTaskUseCase {
       depth: params.depth,
       dueDate: params.dueDate,
       priority: params.priority,
+      imagePath: params.imagePath,
+      imageUrl: params.imageUrl,
       createdAt: now,
       updatedAt: now,
     );

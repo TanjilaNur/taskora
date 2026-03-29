@@ -332,7 +332,7 @@ class _CompletionCard extends StatelessWidget {
     final pct = task.completionPercentage / 100;
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = isDark
-        ? theme.colorScheme.surfaceVariant.withOpacity(0.55)
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55)
         : const Color(0xFFF0F0F0);
 
     return Container(
@@ -372,7 +372,7 @@ class _CompletionCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: pct.clamp(0.0, 1.0),
               minHeight: 7,
-              backgroundColor: Colors.green.withOpacity(0.15),
+              backgroundColor: Colors.green.withValues(alpha: 0.15),
               valueColor:
               const AlwaysStoppedAnimation<Color>(Colors.green),
             ),
@@ -436,7 +436,7 @@ class _MetaCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = isDark
-        ? theme.colorScheme.surfaceVariant.withOpacity(0.55)
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55)
         : const Color(0xFFF0F0F0);
 
     return Container(
@@ -521,8 +521,15 @@ class _SubtasksHeader extends StatelessWidget {
       isScrollControlled: true,
       builder: (_) => TaskFormSheet(
         title: 'Add Subtask',
-        onSubmit: (title, desc, imagePath, dueDate, priority) =>
-            notifier.addSubtask(title, desc),
+        onSubmit: (title, desc, imagePath, imageUrl, dueDate, priority) =>
+            notifier.addSubtask(
+          title,
+          desc,
+          imagePath: imagePath,
+          imageUrl: imageUrl,
+          dueDate: dueDate,
+          priority: priority,
+        ),
       ),
     );
   }
@@ -559,7 +566,7 @@ class _SubtaskRow extends StatelessWidget {
         const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: isDark
-              ? theme.colorScheme.surfaceVariant.withOpacity(0.35)
+              ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
               : const Color(0xFFF2F2F5),
           borderRadius: BorderRadius.circular(14),
         ),
@@ -612,7 +619,7 @@ class _SubtaskRow extends StatelessWidget {
                     completed
                         ? 'Completed'
                         : subtask.subtasks.isEmpty
-                        ? '0 of 0 completed'
+                        ? '${subtask.manualCompletionPercent.round()}% complete'
                         : '$completedCount of $totalCount completed',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: completed
@@ -624,10 +631,23 @@ class _SubtaskRow extends StatelessWidget {
               ),
             ),
 
-            // Arrow
-            Icon(Icons.arrow_forward_ios,
-                size: 14,
-                color: theme.colorScheme.onSurfaceVariant),
+                      // Arrow + delete
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_forward_ios,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant),
+                          const Gap(6),
+                          GestureDetector(
+                            onTap: onDelete, // routes to _confirmDelete in parent
+                            child: Icon(Icons.delete_outline,
+                                size: 18,
+                                color: theme.colorScheme.error
+                                    .withValues(alpha: 0.7)),
+                          ),
+                        ],
+                      ),
           ],
         ),
       ),
@@ -649,7 +669,7 @@ class _BottomActionBar extends StatelessWidget {
         color: Theme.of(context).colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.15),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
           ),
         ),
       ),
@@ -698,16 +718,19 @@ class _BottomActionBar extends StatelessWidget {
         initialTitle: task.title,
         initialDescription: task.description,
         initialImagePath: task.imagePath,
+        initialImageUrl: task.imageUrl,
         initialDueDate: task.dueDate,
         initialPriority: task.priority,
-        onSubmit: (title, desc, imagePath, dueDate, priority) {
+        onSubmit: (title, desc, imagePath, imageUrl, dueDate, priority) {
           notifier.updateTask(task.copyWith(
             title: title,
             description: desc,
             imagePath: imagePath,
+            imageUrl: imageUrl,
             dueDate: dueDate,
             priority: priority,
-            clearImagePath: imagePath == null,
+            clearImagePath: imagePath == null && imageUrl == null,
+            clearImageUrl: imageUrl == null,
           ));
         },
       ),
@@ -730,8 +753,8 @@ class _BottomActionBar extends StatelessWidget {
                 backgroundColor:
                 Theme.of(ctx).colorScheme.errorContainer),
             onPressed: () {
-              Navigator.pop(ctx);
-              Navigator.of(context).pop();
+              Navigator.pop(ctx);         // close dialog
+              Navigator.of(context).pop(); // close detail sheet / go back
               notifier.deleteSubtask(task.id);
             },
             child: const Text('Delete'),

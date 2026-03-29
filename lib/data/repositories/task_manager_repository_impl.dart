@@ -111,6 +111,11 @@ class TaskManagerRepositoryImpl implements TaskRepository {
       await _dataSource.saveModel(model);
       if (newCompleted) await _cascadeComplete(id, now);
 
+      // Propagate upward: mark parents complete if all siblings done
+      if (model.parentId != null) {
+        await _propagateUpward(model.parentId!, now);
+      }
+
       final updated = await _buildSingleTree(id);
       return Ok(updated!.toEntity());
     } catch (e) {
@@ -131,6 +136,40 @@ class TaskManagerRepositoryImpl implements TaskRepository {
     }
   }
 
+  /// Walk upward from [childParentId]: if ALL siblings of the changed task
+  /// are now complete, mark the parent complete too, then recurse further up.
+  Future<void> _propagateUpward(String parentId, DateTime now) async {
+    final parent = await _dataSource.getModelById(parentId);
+    if (parent == null) return;
+
+    final siblings = await _dataSource.getModelsByParentId(parentId);
+    final allDone = siblings.isNotEmpty && siblings.every((s) => s.isCompleted);
+
+    if (allDone && !parent.isCompleted) {
+      parent
+        ..isCompleted = true
+        ..manualCompletionPercent = 100.0
+        ..completedAt = now
+        ..updatedAt = now;
+      await _dataSource.saveModel(parent);
+      // Keep walking up the chain
+      if (parent.parentId != null) {
+        await _propagateUpward(parent.parentId!, now);
+      }
+    } else if (!allDone && parent.isCompleted) {
+      // A sibling was un-completed — revert parent back to incomplete
+      parent
+        ..isCompleted = false
+        ..manualCompletionPercent = 0.0
+        ..completedAt = null
+        ..updatedAt = now;
+      await _dataSource.saveModel(parent);
+      if (parent.parentId != null) {
+        await _propagateUpward(parent.parentId!, now);
+      }
+    }
+  }
+
   @override
   Future<Result<Task>> updateCompletionPercent(
       String id, double percent) async {
@@ -138,13 +177,19 @@ class TaskManagerRepositoryImpl implements TaskRepository {
       final model = await _dataSource.getModelById(id);
       if (model == null) return Err(Exception('Task not found'));
 
+      final now = DateTime.now();
       model
         ..manualCompletionPercent = percent
         ..isCompleted = percent >= 100.0
-        ..completedAt = percent >= 100.0 ? DateTime.now() : null
-        ..updatedAt = DateTime.now();
+        ..completedAt = percent >= 100.0 ? now : null
+        ..updatedAt = now;
 
       await _dataSource.saveModel(model);
+
+      if (model.parentId != null) {
+        await _propagateUpward(model.parentId!, now);
+      }
+
       final updated = await _buildSingleTree(id);
       return Ok(updated!.toEntity());
     } catch (e) {

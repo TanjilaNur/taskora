@@ -40,9 +40,14 @@ class TaskDetailNotifier extends StateNotifier<TaskDetailState> {
     );
   }
 
-  Future<void> addSubtask(String title, String? description,
-      {TaskPriority priority = TaskPriority.medium,
-        DateTime? dueDate}) async {
+  Future<void> addSubtask(
+    String title,
+    String? description, {
+    TaskPriority priority = TaskPriority.medium,
+    DateTime? dueDate,
+    String? imagePath,
+    String? imageUrl,
+  }) async {
     final task = _currentTask;
     if (task == null || task.depth >= 4) return;
 
@@ -53,29 +58,47 @@ class TaskDetailNotifier extends StateNotifier<TaskDetailState> {
       depth: task.depth + 1,
       priority: priority,
       dueDate: dueDate,
+      imagePath: imagePath,
+      imageUrl: imageUrl,
     );
-    await _ref.read(createTaskUseCaseProvider).call(params);
-    await load();
+    final result = await _ref.read(createTaskUseCaseProvider).call(params);
+    result.fold(
+      ok:  (_) => load(),
+      err: (e) => state = TaskDetailError(e.toString()),
+    );
   }
 
   Future<void> updateTask(Task updated) async {
-    await _ref.read(updateTaskUseCaseProvider).call(updated);
-    await load();
+    final result = await _ref.read(updateTaskUseCaseProvider).call(updated);
+    result.fold(
+      ok:  (_) => load(),
+      err: (e) => state = TaskDetailError(e.toString()),
+    );
   }
 
   Future<void> toggleCompletion(String id) async {
-    await _ref.read(toggleCompletionUseCaseProvider).call(id);
-    await load();
+    final result = await _ref.read(toggleCompletionUseCaseProvider).call(id);
+    result.fold(
+      ok:  (_) => load(),
+      err: (e) => state = TaskDetailError(e.toString()),
+    );
   }
 
   Future<void> updateCompletionPercent(String id, double percent) async {
-    await _ref.read(updateCompletionPercentUseCaseProvider).call(id, percent);
-    await load();
+    final result =
+        await _ref.read(updateCompletionPercentUseCaseProvider).call(id, percent);
+    result.fold(
+      ok:  (_) => load(),
+      err: (e) => state = TaskDetailError(e.toString()),
+    );
   }
 
   Future<void> deleteSubtask(String id) async {
-    await _ref.read(deleteTaskUseCaseProvider).call(id);
-    await load();
+    final result = await _ref.read(deleteTaskUseCaseProvider).call(id);
+    result.fold(
+      ok:  (_) => load(),
+      err: (e) => state = TaskDetailError(e.toString()),
+    );
   }
 
   Future<void> pickImage({bool fromCamera = false}) async {
@@ -93,7 +116,7 @@ class TaskDetailNotifier extends StateNotifier<TaskDetailState> {
         final updated = task.copyWith(imagePath: path, clearImageUrl: true);
         await updateTask(updated);
       },
-      err: (_) => null,
+      err: (e) => state = TaskDetailError(e.toString()),
     );
   }
 
@@ -110,7 +133,7 @@ class TaskDetailNotifier extends StateNotifier<TaskDetailState> {
         final updated = task.copyWith(imagePath: path, imageUrl: url);
         await updateTask(updated);
       },
-      err: (_) => null,
+      err: (e) => state = TaskDetailError(e.toString()),
     );
   }
 
@@ -119,8 +142,7 @@ class TaskDetailNotifier extends StateNotifier<TaskDetailState> {
     if (task == null) return;
     final imageService = _ref.read(imageServiceProvider);
     await imageService.deleteImage(task.imagePath);
-    final updated =
-    task.copyWith(clearImagePath: true, clearImageUrl: true);
+    final updated = task.copyWith(clearImagePath: true, clearImageUrl: true);
     await updateTask(updated);
   }
 

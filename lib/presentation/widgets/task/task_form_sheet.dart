@@ -1,5 +1,7 @@
+// Task creation / edit form sheet — supports gallery, camera and URL image input.
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,10 +18,19 @@ class TaskFormSheet extends StatefulWidget {
   final String? initialTitle;
   final String? initialDescription;
   final String? initialImagePath;
+  final String? initialImageUrl;
   final DateTime? initialDueDate;
   final TaskPriority initialPriority;
-  final void Function(String title, String? description, String? imagePath,
-      DateTime? dueDate, TaskPriority priority) onSubmit;
+
+  /// 6-param callback: title, description, imagePath, imageUrl, dueDate, priority
+  final void Function(
+    String title,
+    String? description,
+    String? imagePath,
+    String? imageUrl,
+    DateTime? dueDate,
+    TaskPriority priority,
+  ) onSubmit;
 
   const TaskFormSheet({
     super.key,
@@ -27,6 +38,7 @@ class TaskFormSheet extends StatefulWidget {
     this.initialTitle,
     this.initialDescription,
     this.initialImagePath,
+    this.initialImageUrl,
     this.initialDueDate,
     this.initialPriority = TaskPriority.medium,
     required this.onSubmit,
@@ -39,19 +51,24 @@ class TaskFormSheet extends StatefulWidget {
 class _TaskFormSheetState extends State<TaskFormSheet> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _urlCtrl;
   final _formKey = GlobalKey<FormState>();
 
   String? _imagePath;
+  String? _pendingImageUrl;
   DateTime? _dueDate;
   late TaskPriority _priority;
   bool _pickingImage = false;
+  bool _downloadingUrl = false;
 
   @override
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.initialTitle);
     _descCtrl = TextEditingController(text: widget.initialDescription);
+    _urlCtrl = TextEditingController(text: widget.initialImageUrl ?? '');
     _imagePath = widget.initialImagePath;
+    _pendingImageUrl = widget.initialImageUrl;
     _dueDate = widget.initialDueDate;
     _priority = widget.initialPriority;
   }
@@ -60,6 +77,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   void dispose() {
     _titleCtrl.dispose();
     _descCtrl.dispose();
+    _urlCtrl.dispose();
     super.dispose();
   }
 
@@ -82,7 +100,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.outline.withOpacity(0.4),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -93,7 +111,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                 child: ListView(
                   controller: controller,
                   padding: EdgeInsets.fromLTRB(
-                      20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+                    20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
                   children: [
                     const Gap(10),
                     Text(
@@ -104,14 +122,85 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                     const Gap(20),
 
                     // ── Image Upload ──────────────────────────────
-                    _buildSectionLabel(context, '📷 Upload Thumbnail (250x250px)'),
+                    _buildSectionLabel(context, '📷 Upload Thumbnail (250×250px)'),
                     const Gap(8),
                     _ImagePickerArea(
                       imagePath: _imagePath,
+                      pendingImageUrl: _pendingImageUrl,
                       loading: _pickingImage,
                       onPick: _pickImage,
-                      onRemove: () => setState(() => _imagePath = null),
+                      onRemove: () => setState(() {
+                        _imagePath = null;
+                        _pendingImageUrl = null;
+                        _urlCtrl.clear();
+                      }),
                     ),
+                    const Gap(12),
+
+                    // ── Image URL ─────────────────────────────────
+                    _buildSectionLabel(context, '🔗 Or paste an image URL'),
+                    const Gap(8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _urlCtrl,
+                            keyboardType: TextInputType.url,
+                            decoration: InputDecoration(
+                              hintText: 'https://example.com/image.jpg',
+                              suffixIcon: _urlCtrl.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 18),
+                                      onPressed: () {
+                                        _urlCtrl.clear();
+                                        setState(() => _pendingImageUrl = null);
+                                      },
+                                    )
+                                  : null,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                        const Gap(8),
+                        SizedBox(
+                          height: 48,
+                          child: _downloadingUrl
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              : FilledButton.tonal(
+                                  onPressed: _urlCtrl.text.trim().isEmpty
+                                      ? null
+                                      : _applyUrl,
+                                  child: const Text('Use'),
+                                ),
+                        ),
+                      ],
+                    ),
+                    if (_pendingImageUrl != null) ...[
+                      const Gap(6),
+                      Row(
+                        children: [
+                          const Icon(Icons.check_circle, size: 14, color: Colors.green),
+                          const Gap(4),
+                          Expanded(
+                            child: Text(
+                              'URL set: $_pendingImageUrl',
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const Gap(20),
 
                     // ── Title ─────────────────────────────────────
@@ -120,8 +209,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                     TextFormField(
                       controller: _titleCtrl,
                       autofocus: widget.initialTitle == null,
-                      decoration: const InputDecoration(
-                          hintText: 'Enter task title'),
+                      decoration: const InputDecoration(hintText: 'Enter task title'),
                       validator: (v) => v == null || v.trim().isEmpty
                           ? 'Title is required'
                           : null,
@@ -136,8 +224,9 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                       controller: _descCtrl,
                       maxLines: 3,
                       decoration: const InputDecoration(
-                          hintText: 'Add a description (optional)',
-                          alignLabelWithHint: true),
+                        hintText: 'Add a description (optional)',
+                        alignLabelWithHint: true,
+                      ),
                       textCapitalization: TextCapitalization.sentences,
                     ),
                     const Gap(16),
@@ -156,7 +245,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                     const Gap(8),
                     _PrioritySelector(
                       selected: _priority,
-                      onChanged: (p) => setState(() => _priority = p),
+                      onChanged: (pr) => setState(() => _priority = pr),
                     ),
                     const Gap(28),
 
@@ -198,11 +287,13 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
   }
 
   Widget _buildSectionLabel(BuildContext context, String text) {
-    return Text(text,
-        style: Theme.of(context)
-            .textTheme
-            .labelLarge
-            ?.copyWith(fontWeight: FontWeight.w600));
+    return Text(
+      text,
+      style: Theme.of(context)
+          .textTheme
+          .labelLarge
+          ?.copyWith(fontWeight: FontWeight.w600),
+    );
   }
 
   Future<void> _pickImage({bool fromCamera = false}) async {
@@ -219,13 +310,84 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
 
       final destPath = p.join(imagesDir.path, '${const Uuid().v4()}.jpg');
       final result = await FlutterImageCompress.compressAndGetFile(
-        xfile.path, destPath,
-        minWidth: 250, minHeight: 250,
-        quality: 85, format: CompressFormat.jpeg,
+        xfile.path,
+        destPath,
+        minWidth: 250,
+        minHeight: 250,
+        quality: 85,
+        format: CompressFormat.jpeg,
       );
-      if (result != null) setState(() => _imagePath = result.path);
+      if (result != null) {
+        setState(() {
+          _imagePath = result.path;
+          _pendingImageUrl = null; // file takes priority
+          _urlCtrl.clear();
+        });
+      }
     } finally {
       setState(() => _pickingImage = false);
+    }
+  }
+
+  Future<void> _applyUrl() async {
+    final url = _urlCtrl.text.trim();
+    if (url.isEmpty) return;
+
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid URL')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _downloadingUrl = true);
+    try {
+      final client = HttpClient();
+      final req = await client
+          .headUrl(uri)
+          .timeout(const Duration(seconds: 8));
+      final resp = await req.close();
+      client.close();
+
+      if (resp.statusCode >= 200 && resp.statusCode < 400) {
+        setState(() {
+          _pendingImageUrl = url;
+          _imagePath = null;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image URL set — will be downloaded on save'),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('URL not reachable (${resp.statusCode})'),
+            ),
+          );
+        }
+      }
+    } catch (_) {
+      // Accept anyway — server might reject HEAD but serve GET fine
+      setState(() {
+        _pendingImageUrl = url;
+        _imagePath = null;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('URL saved (could not verify — will try on save)'),
+          ),
+        );
+      }
+    } finally {
+      setState(() => _downloadingUrl = false);
     }
   }
 
@@ -235,6 +397,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
       _titleCtrl.text.trim(),
       _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       _imagePath,
+      _pendingImageUrl,
       _dueDate,
       _priority,
     );
@@ -246,71 +409,116 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
 
 class _ImagePickerArea extends StatelessWidget {
   final String? imagePath;
+  final String? pendingImageUrl;
   final bool loading;
   final void Function({bool fromCamera}) onPick;
   final VoidCallback onRemove;
 
   const _ImagePickerArea({
     required this.imagePath,
+    this.pendingImageUrl,
     required this.loading,
     required this.onPick,
     required this.onRemove,
   });
 
+  bool get _hasContent => imagePath != null || pendingImageUrl != null;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return GestureDetector(
-      onTap: () => _showOptions(context),
+      onTap: _hasContent ? null : () => _showOptions(context),
       child: Container(
         height: 130,
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: theme.colorScheme.outline.withOpacity(0.3),
-              style: BorderStyle.solid),
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+          ),
         ),
         child: loading
             ? const Center(child: CircularProgressIndicator())
-            : imagePath != null
-            ? Stack(
-          fit: StackFit.expand,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(File(imagePath!), fit: BoxFit.cover),
-            ),
-            Positioned(
-              top: 6,
-              right: 6,
-              child: GestureDetector(
-                onTap: onRemove,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
+            : _hasContent
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: imagePath != null
+                            ? Image.file(File(imagePath!), fit: BoxFit.cover)
+                            : CachedNetworkImage(
+                                imageUrl: pendingImageUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                errorWidget: (_, __, ___) => Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.broken_image_outlined,
+                                          size: 32,
+                                          color: theme.colorScheme.onSurfaceVariant),
+                                      const Gap(4),
+                                      Text('URL preview unavailable',
+                                          style: theme.textTheme.labelSmall),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                      ),
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: GestureDetector(
+                          onTap: onRemove,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                      // Tap-to-change overlay
+                      Positioned(
+                        bottom: 6,
+                        left: 6,
+                        child: GestureDetector(
+                          onTap: () => _showOptions(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text('Change',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 11)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.camera_alt_outlined,
+                          size: 36, color: theme.colorScheme.onSurfaceVariant),
+                      const Gap(8),
+                      Text(
+                        'Tap to select or take a photo',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.close,
-                      color: Colors.white, size: 16),
-                ),
-              ),
-            ),
-          ],
-        )
-            : Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.camera_alt_outlined,
-                size: 36,
-                color: theme.colorScheme.onSurfaceVariant),
-            const Gap(8),
-            Text('Tap to select or take a photo',
-                style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
       ),
     );
   }
@@ -368,7 +576,7 @@ class _DueDatePicker extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -408,15 +616,14 @@ class _PrioritySelector extends StatelessWidget {
   final TaskPriority selected;
   final ValueChanged<TaskPriority> onChanged;
 
-  const _PrioritySelector(
-      {required this.selected, required this.onChanged});
+  const _PrioritySelector({required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: TaskPriority.values.map((p) {
-        final isSelected = p == selected;
-        final color = switch (p) {
+      children: TaskPriority.values.map((pr) {
+        final isSelected = pr == selected;
+        final color = switch (pr) {
           TaskPriority.high => Colors.red.shade400,
           TaskPriority.medium => Colors.orange.shade400,
           TaskPriority.low => Colors.green.shade400,
@@ -425,30 +632,32 @@ class _PrioritySelector extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
-              onTap: () => onChanged(p),
+              onTap: () => onChanged(pr),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color:
-                  isSelected ? color.withOpacity(0.15) : Colors.transparent,
+                  color: isSelected
+                      ? color.withValues(alpha: 0.15)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: isSelected ? color : color.withOpacity(0.3),
+                    color: isSelected ? color : color.withValues(alpha: 0.3),
                     width: isSelected ? 2 : 1,
                   ),
                 ),
                 child: Column(
                   children: [
-                    Radio<TaskPriority>(
-                      value: p,
-                      groupValue: selected,
-                      onChanged: (v) => onChanged(v!),
-                      activeColor: color,
-                      visualDensity: VisualDensity.compact,
+                    Icon(
+                      isSelected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: isSelected ? color : color.withValues(alpha: 0.5),
+                      size: 22,
                     ),
+                    const Gap(4),
                     Text(
-                      p.label,
+                      pr.label,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: isSelected
@@ -469,3 +678,8 @@ class _PrioritySelector extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
