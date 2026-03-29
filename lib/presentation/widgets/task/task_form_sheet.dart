@@ -8,6 +8,7 @@ import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_dimens.dart';
 import '../../../domain/entities/task.dart';
 import '../../providers/providers.dart';
 
@@ -89,196 +90,183 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
       expand: false,
       builder: (_, controller) => Scaffold(
         backgroundColor: Colors.transparent,
-        body: Column(
-          children: [
-            // Single drag handle
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 4),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            controller: controller,
+            padding: EdgeInsets.fromLTRB(
+              AppDimens.formPadH,
+              AppDimens.spaceLg,
+              AppDimens.formPadH,
+              MediaQuery.viewInsetsOf(context).bottom +
+                  MediaQuery.paddingOf(context).bottom +
+                  AppDimens.formPadBottom,
             ),
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  controller: controller,
-                  padding: EdgeInsets.fromLTRB(
-                    20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+            children: [
+              Text(
+                widget.title,
+                style: theme.textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const Gap(20),
+
+              // ── Image Upload ──────────────────────────────
+              _buildSectionLabel(context, AppStrings.labelThumbnail),
+              const Gap(8),
+              _ImagePickerArea(
+                imagePath: _imagePath,
+                pendingImageUrl: _pendingImageUrl,
+                loading: _pickingImage,
+                onPick: _pickImage,
+                onRemove: () => setState(() {
+                  _imagePath = null;
+                  _pendingImageUrl = null;
+                  _urlCtrl.clear();
+                }),
+              ),
+              const Gap(12),
+
+              // ── Image URL ─────────────────────────────────
+              _buildSectionLabel(context, AppStrings.labelImageUrl),
+              const Gap(8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _urlCtrl,
+                      keyboardType: TextInputType.url,
+                      decoration: InputDecoration(
+                        hintText: AppStrings.hintImageUrl,
+                        suffixIcon: _urlCtrl.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _urlCtrl.clear();
+                                  setState(() => _pendingImageUrl = null);
+                                },
+                              )
+                            : null,
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
+                  const Gap(8),
+                  SizedBox(
+                    height: 48,
+                    child: _downloadingUrl
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : FilledButton.tonal(
+                            onPressed: _urlCtrl.text.trim().isEmpty
+                                ? null
+                                : _applyUrl,
+                            child: const Text(AppStrings.btnUse),
+                          ),
+                  ),
+                ],
+              ),
+              if (_pendingImageUrl != null) ...[
+                const Gap(6),
+                Row(
                   children: [
-                    const Gap(10),
-                    Text(
-                      widget.title,
-                      style: theme.textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const Gap(20),
-
-                    // ── Image Upload ──────────────────────────────
-                    _buildSectionLabel(context, AppStrings.labelThumbnail),
-                    const Gap(8),
-                    _ImagePickerArea(
-                      imagePath: _imagePath,
-                      pendingImageUrl: _pendingImageUrl,
-                      loading: _pickingImage,
-                      onPick: _pickImage,
-                      onRemove: () => setState(() {
-                        _imagePath = null;
-                        _pendingImageUrl = null;
-                        _urlCtrl.clear();
-                      }),
-                    ),
-                    const Gap(12),
-
-                    // ── Image URL ─────────────────────────────────
-                    _buildSectionLabel(context, AppStrings.labelImageUrl),
-                    const Gap(8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _urlCtrl,
-                            keyboardType: TextInputType.url,
-                            decoration: InputDecoration(
-                              hintText: AppStrings.hintImageUrl,
-                              suffixIcon: _urlCtrl.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 18),
-                                      onPressed: () {
-                                        _urlCtrl.clear();
-                                        setState(() => _pendingImageUrl = null);
-                                      },
-                                    )
-                                  : null,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
+                    const Icon(Icons.check_circle, size: 14, color: Colors.green),
+                    const Gap(4),
+                    Expanded(
+                      child: Text(
+                        '${AppStrings.imageUrlSet}$_pendingImageUrl',
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.green.shade700,
                         ),
-                        const Gap(8),
-                        SizedBox(
-                          height: 48,
-                          child: _downloadingUrl
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
-                                )
-                              : FilledButton.tonal(
-                                  onPressed: _urlCtrl.text.trim().isEmpty
-                                      ? null
-                                      : _applyUrl,
-                                  child: const Text(AppStrings.btnUse),
-                                ),
-                        ),
-                      ],
-                    ),
-                    if (_pendingImageUrl != null) ...[
-                      const Gap(6),
-                      Row(
-                        children: [
-                          const Icon(Icons.check_circle, size: 14, color: Colors.green),
-                          const Gap(4),
-                          Expanded(
-                            child: Text(
-                              '${AppStrings.imageUrlSet}$_pendingImageUrl',
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: Colors.green.shade700,
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
-                    ],
-                    const Gap(20),
-
-                    // ── Title ─────────────────────────────────────
-                    _buildSectionLabel(context, AppStrings.labelTaskTitle),
-                    const Gap(8),
-                    TextFormField(
-                      controller: _titleCtrl,
-                      autofocus: widget.initialTitle == null,
-                      decoration: const InputDecoration(hintText: AppStrings.hintTaskTitle),
-                      validator: (v) => v == null || v.trim().isEmpty
-                          ? AppStrings.validationTitleEmpty
-                          : null,
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const Gap(16),
-
-                    // ── Description ───────────────────────────────
-                    _buildSectionLabel(context, AppStrings.labelDescription),
-                    const Gap(8),
-                    TextFormField(
-                      controller: _descCtrl,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        hintText: AppStrings.hintDescription,
-                        alignLabelWithHint: true,
-                      ),
-                      textCapitalization: TextCapitalization.sentences,
-                    ),
-                    const Gap(16),
-
-                    // ── Due Date ──────────────────────────────────
-                    _buildSectionLabel(context, AppStrings.labelDueDate),
-                    const Gap(8),
-                    _DueDatePicker(
-                      dueDate: _dueDate,
-                      onChanged: (d) => setState(() => _dueDate = d),
-                    ),
-                    const Gap(16),
-
-                    // ── Priority ──────────────────────────────────
-                    _buildSectionLabel(context, AppStrings.labelPriority),
-                    const Gap(8),
-                    _PrioritySelector(
-                      selected: _priority,
-                      onChanged: (pr) => setState(() => _priority = pr),
-                    ),
-                    const Gap(28),
-
-                    // ── Actions ───────────────────────────────────
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text(AppStrings.btnCancel),
-                          ),
-                        ),
-                        const Gap(12),
-                        Expanded(
-                          flex: 2,
-                          child: FilledButton(
-                            onPressed: _submit,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Text(
-                                widget.initialTitle != null
-                                    ? AppStrings.btnSaveChanges
-                                    : AppStrings.btnSaveTask,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
+              ],
+              const Gap(20),
+
+              // ── Title ─────────────────────────────────────
+              _buildSectionLabel(context, AppStrings.labelTaskTitle),
+              const Gap(8),
+              TextFormField(
+                controller: _titleCtrl,
+                autofocus: widget.initialTitle == null,
+                decoration: const InputDecoration(hintText: AppStrings.hintTaskTitle),
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? AppStrings.validationTitleEmpty
+                    : null,
+                textCapitalization: TextCapitalization.sentences,
               ),
-            ),
-          ],
+              const Gap(16),
+
+              // ── Description ───────────────────────────────
+              _buildSectionLabel(context, AppStrings.labelDescription),
+              const Gap(8),
+              TextFormField(
+                controller: _descCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: AppStrings.hintDescription,
+                  alignLabelWithHint: true,
+                ),
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const Gap(16),
+
+              // ── Due Date ──────────────────────────────────
+              _buildSectionLabel(context, AppStrings.labelDueDate),
+              const Gap(8),
+              _DueDatePicker(
+                dueDate: _dueDate,
+                onChanged: (d) => setState(() => _dueDate = d),
+              ),
+              const Gap(16),
+
+              // ── Priority ──────────────────────────────────
+              _buildSectionLabel(context, AppStrings.labelPriority),
+              const Gap(8),
+              _PrioritySelector(
+                selected: _priority,
+                onChanged: (pr) => setState(() => _priority = pr),
+              ),
+              const Gap(28),
+
+              // ── Actions ───────────────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(AppStrings.btnCancel),
+                    ),
+                  ),
+                  const Gap(12),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: _submit,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          widget.initialTitle != null
+                              ? AppStrings.btnSaveChanges
+                              : AppStrings.btnSaveTask,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -393,8 +381,9 @@ class _ImagePickerArea extends StatelessWidget {
       child: Container(
         height: 130,
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
+          color: theme.colorScheme.surfaceContainerHighest
+              .withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(AppDimens.radiusLg),
           border: Border.all(
             color: theme.colorScheme.outline.withValues(alpha: 0.3),
           ),
@@ -406,9 +395,11 @@ class _ImagePickerArea extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius:
+                            BorderRadius.circular(AppDimens.radiusLg),
                         child: imagePath != null
-                            ? Image.file(File(imagePath!), fit: BoxFit.cover)
+                            ? Image.file(File(imagePath!),
+                                fit: BoxFit.cover)
                             : CachedNetworkImage(
                                 imageUrl: pendingImageUrl!,
                                 fit: BoxFit.cover,
@@ -420,48 +411,55 @@ class _ImagePickerArea extends StatelessWidget {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(Icons.broken_image_outlined,
-                                          size: 32,
-                                          color: theme.colorScheme.onSurfaceVariant),
-                                      const Gap(4),
+                                          size: AppDimens.iconHero - 4,
+                                          color: theme.colorScheme
+                                              .onSurfaceVariant),
+                                      const Gap(AppDimens.spaceXs),
                                       Text('URL preview unavailable',
-                                          style: theme.textTheme.labelSmall),
+                                          style:
+                                              theme.textTheme.labelSmall),
                                     ],
                                   ),
                                 ),
                               ),
                       ),
                       Positioned(
-                        top: 6,
-                        right: 6,
+                        top: AppDimens.spaceSm,
+                        right: AppDimens.spaceSm,
                         child: GestureDetector(
                           onTap: onRemove,
                           child: Container(
-                            padding: const EdgeInsets.all(4),
+                            padding:
+                                const EdgeInsets.all(AppDimens.spaceXs),
                             decoration: BoxDecoration(
                               color: Colors.black54,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(
+                                  AppDimens.radiusChip),
                             ),
                             child: const Icon(Icons.close,
-                                color: Colors.white, size: 16),
+                                color: Colors.white,
+                                size: AppDimens.iconMd),
                           ),
                         ),
                       ),
-                      // Tap-to-change overlay
                       Positioned(
-                        bottom: 6,
-                        left: 6,
+                        bottom: AppDimens.spaceSm,
+                        left: AppDimens.spaceSm,
                         child: GestureDetector(
                           onTap: () => _showOptions(context),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                                horizontal: AppDimens.spaceMd,
+                                vertical: AppDimens.spaceXs),
                             decoration: BoxDecoration(
                               color: Colors.black54,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                  AppDimens.radiusLg),
                             ),
                             child: const Text(AppStrings.btnChange,
                                 style: TextStyle(
-                                    color: Colors.white, fontSize: 11)),
+                                    color: Colors.white,
+                                    fontSize: AppDimens.fontSm)),
                           ),
                         ),
                       ),
@@ -471,9 +469,10 @@ class _ImagePickerArea extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.camera_alt_outlined,
-                          size: 36, color: theme.colorScheme.onSurfaceVariant),
-                      const Gap(8),
-                        Text(
+                          size: AppDimens.iconHero,
+                          color: theme.colorScheme.onSurfaceVariant),
+                      const Gap(AppDimens.spaceMd),
+                      Text(
                         AppStrings.tapToSelect,
                         style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant),
@@ -533,18 +532,22 @@ class _DueDatePicker extends StatelessWidget {
         );
         if (picked != null) onChanged(picked);
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppDimens.radiusLg),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppDimens.pagePadH,
+            vertical: AppDimens.cardPad),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
+          color: theme.colorScheme.surfaceContainerHighest
+              .withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(AppDimens.radiusLg),
         ),
         child: Row(
           children: [
             Icon(Icons.calendar_today_outlined,
-                size: 18, color: theme.colorScheme.onSurfaceVariant),
-            const Gap(10),
+                size: AppDimens.iconLg + 4,
+                color: theme.colorScheme.onSurfaceVariant),
+            const Gap(AppDimens.spaceLg),
             Expanded(
               child: Text(
                   dueDate != null
@@ -561,7 +564,8 @@ class _DueDatePicker extends StatelessWidget {
               GestureDetector(
                 onTap: () => onChanged(null),
                 child: Icon(Icons.close,
-                    size: 16, color: theme.colorScheme.onSurfaceVariant),
+                    size: AppDimens.pagePadH,
+                    color: theme.colorScheme.onSurfaceVariant),
               )
             else
               Icon(Icons.chevron_right,
@@ -591,19 +595,23 @@ class _PrioritySelector extends StatelessWidget {
         };
         return Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: AppDimens.spaceMd),
             child: GestureDetector(
               onTap: () => onChanged(pr),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    vertical: AppDimens.spaceLg),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? color.withValues(alpha: 0.15)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius:
+                      BorderRadius.circular(AppDimens.radiusMd),
                   border: Border.all(
-                    color: isSelected ? color : color.withValues(alpha: 0.3),
+                    color: isSelected
+                        ? color
+                        : color.withValues(alpha: 0.3),
                     width: isSelected ? 2 : 1,
                   ),
                 ),
@@ -613,20 +621,24 @@ class _PrioritySelector extends StatelessWidget {
                       isSelected
                           ? Icons.radio_button_checked
                           : Icons.radio_button_unchecked,
-                      color: isSelected ? color : color.withValues(alpha: 0.5),
-                      size: 22,
+                      color: isSelected
+                          ? color
+                          : color.withValues(alpha: 0.5),
+                      size: AppDimens.iconXxl - 2,
                     ),
-                    const Gap(4),
+                    const Gap(AppDimens.spaceXs),
                     Text(
                       pr.label,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppDimens.fontMd,
                         fontWeight: isSelected
                             ? FontWeight.bold
                             : FontWeight.normal,
                         color: isSelected
                             ? color
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                            : Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                       ),
                     ),
                   ],

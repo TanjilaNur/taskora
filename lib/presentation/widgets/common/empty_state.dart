@@ -4,6 +4,7 @@ import 'package:gap/gap.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_dimens.dart';
 
 class EmptyState extends StatelessWidget {
   const EmptyState({super.key});
@@ -15,14 +16,14 @@ class EmptyState extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.all(AppDimens.space40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Illustration container
             Container(
-              width: 120,
-              height: 120,
+              width: AppDimens.emptyStateIcon,
+              height: AppDimens.emptyStateIcon,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -36,7 +37,7 @@ class EmptyState extends StatelessWidget {
               child: Center(
                 child: Icon(
                   Icons.checklist_rounded,
-                  size: 52,
+                  size: AppDimens.iconEmp,
                   color: AppTheme.primaryColor.withValues(alpha: 0.85),
                 ),
               ),
@@ -46,7 +47,7 @@ class EmptyState extends StatelessWidget {
                     end: 1.06,
                     duration: 2000.ms,
                     curve: Curves.easeInOut),
-            const Gap(28),
+            const Gap(AppDimens.space28),
             Text(
               AppStrings.emptyTitle,
               style: theme.textTheme.headlineSmall?.copyWith(
@@ -54,7 +55,7 @@ class EmptyState extends StatelessWidget {
                 letterSpacing: -0.3,
               ),
             ),
-            const Gap(10),
+            const Gap(AppDimens.spaceLg),
             Text(
               AppStrings.emptySubtitle,
               textAlign: TextAlign.center,
@@ -63,22 +64,22 @@ class EmptyState extends StatelessWidget {
                 height: 1.5,
               ),
             ),
-            const Gap(32),
+            const Gap(AppDimens.space32),
             // Decorative dots
             Row(
               mainAxisSize: MainAxisSize.min,
               children: List.generate(
                 3,
                     (i) => Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: i == 1 ? 20 : 8,
-                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: AppDimens.spaceXs),
+                  width: i == 1 ? AppDimens.emptyStateDotWide : AppDimens.emptyStateDotNarrow,
+                  height: AppDimens.emptyStateDotHeight,
                   decoration: BoxDecoration(
                     color: i == 1
                         ? AppTheme.primaryColor
                         : AppTheme.primaryColor
                         .withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(AppDimens.spaceXs),
                   ),
                 ),
               ),

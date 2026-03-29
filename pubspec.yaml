@@ -1,5 +1,5 @@
-name: todo_app
-description: A senior-level Flutter Todo app with Clean Architecture, Riverpod, and Isar.
+name: taskora
+description: A Flutter task management app with Clean Architecture, Riverpod, Isar, hierarchical tasks and offline-first data persistence.
 publish_to: 'none'
 version: 1.0.0+1
 

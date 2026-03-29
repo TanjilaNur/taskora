@@ -3,6 +3,7 @@ import 'package:gap/gap.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_dimens.dart';
 import '../../../domain/entities/task.dart';
 
 class SubtaskTile extends StatelessWidget {
@@ -25,12 +26,12 @@ class SubtaskTile extends StatelessWidget {
     final pct = subtask.completionPercentage / 100;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppDimens.spaceMd),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppDimens.radiusXl),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AppDimens.cardPad),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -47,7 +48,7 @@ class SubtaskTile extends StatelessWidget {
                           : theme.colorScheme.outline,
                     ),
                   ),
-                  const Gap(10),
+                  const Gap(AppDimens.spaceLg),
                   Expanded(
                     child: Text(
                       subtask.title,
@@ -62,34 +63,36 @@ class SubtaskTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (subtask.subtasks.isNotEmpty) ...[
+                  if (subtask.subtasks.isNotEmpty)
                     Icon(Icons.chevron_right,
                         color: theme.colorScheme.onSurfaceVariant),
-                  ],
                   IconButton(
                     icon: Icon(Icons.delete_outline,
-                        size: 18, color: theme.colorScheme.error),
+                        size: AppDimens.iconLg,
+                        color: theme.colorScheme.error),
                     onPressed: onDelete,
                     visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
               if (subtask.subtasks.isNotEmpty) ...[
-                const Gap(8),
+                const Gap(AppDimens.spaceMd),
                 Row(
                   children: [
                     Expanded(
                       child: LinearPercentIndicator(
-                        lineHeight: 6,
+                        lineHeight: AppDimens.radiusSm,
                         percent: pct.clamp(0.0, 1.0),
-                        progressColor: pct >= 1.0 ? Colors.green : theme.colorScheme.primary,
+                        progressColor: pct >= 1.0
+                            ? Colors.green
+                            : theme.colorScheme.primary,
                         backgroundColor: theme.colorScheme.primaryContainer,
-                        barRadius: const Radius.circular(4),
+                        barRadius: const Radius.circular(AppDimens.spaceXs),
                         padding: EdgeInsets.zero,
                         animation: true,
                       ),
                     ),
-                    const Gap(8),
+                    const Gap(AppDimens.spaceMd),
                     Text(
                       '${(pct * 100).round()}%',
                       style: theme.textTheme.labelSmall
@@ -97,8 +100,7 @@ class SubtaskTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const Gap(4),
-                // Tap to expand hint
+                const Gap(AppDimens.spaceXs),
                 Text(
                   '${subtask.subtasks.length} subtask${subtask.subtasks.length > 1 ? 's' : ''} · ${AppStrings.tapToExpand}',
                   style: theme.textTheme.labelSmall?.copyWith(

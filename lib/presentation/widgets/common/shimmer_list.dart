@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../../../core/constants/app_dimens.dart';
+
 class ShimmerList extends StatelessWidget {
   const ShimmerList({super.key});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark
-        ? const Color(0xFF252438)
-        : const Color(0xFFEEECFF);
-    final highlightColor = isDark
-        ? const Color(0xFF2E2C45)
-        : const Color(0xFFFFFFFF);
+    final baseColor      = isDark ? const Color(0xFF252438) : const Color(0xFFEEECFF);
+    final highlightColor = isDark ? const Color(0xFF2E2C45) : const Color(0xFFFFFFFF);
 
     return Shimmer.fromColors(
       baseColor: baseColor,
       highlightColor: highlightColor,
       period: const Duration(milliseconds: 1400),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        padding: const EdgeInsets.fromLTRB(
+            AppDimens.pagePadH, AppDimens.spaceMd,
+            AppDimens.pagePadH, AppDimens.pagePadH),
         itemCount: 5,
         itemBuilder: (_, i) => _ShimmerCard(index: i),
       ),
@@ -33,29 +33,28 @@ class _ShimmerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Alternate card heights for visual variety
-    final height = index % 2 == 0 ? 88.0 : 96.0;
+    final height = index % 2 == 0 ? AppDimens.shimmerCardH1 : AppDimens.shimmerCardH2;
     return Container(
       height: height,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppDimens.spaceXl),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppDimens.cardPad),
         child: Row(
           children: [
             // Thumbnail placeholder
             Container(
-              width: 56,
-              height: 56,
+              width: AppDimens.thumbnailCard,
+              height: AppDimens.thumbnailCard,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppDimens.thumbnailCardRad),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppDimens.spaceXl),
             // Text placeholders
             Expanded(
               child: Column(
@@ -63,30 +62,30 @@ class _ShimmerCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    height: 14,
+                    height: AppDimens.shimmerTitleH,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(7),
+                      borderRadius: BorderRadius.circular(AppDimens.radiusSm),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppDimens.spaceMd),
                   Container(
-                    height: 10,
-                    width: 120,
+                    height: AppDimens.shimmerSubtitleH,
+                    width: AppDimens.shimmerSubtitleW,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(5),
+                      borderRadius: BorderRadius.circular(AppDimens.radiusSm - 1),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppDimens.spaceLg),
                   // Progress bar placeholder
                   Container(
-                    height: 5,
+                    height: AppDimens.shimmerBarH,
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppDimens.spaceXs),
                     ),
                   ),
                 ],

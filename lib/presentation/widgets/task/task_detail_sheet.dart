@@ -9,6 +9,8 @@ import 'package:intl/intl.dart';
 
 import '../../../domain/entities/task.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_dimens.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../state/task_detail_notifier.dart';
 import '../common/shimmer_list.dart';
 import 'task_form_sheet.dart';
@@ -140,7 +142,9 @@ class _TaskDetailContent extends ConsumerWidget {
 
               // ── Body content ───────────────────────────────────
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                padding: const EdgeInsets.fromLTRB(
+                    AppDimens.pagePadV, AppDimens.pagePadV,
+                    AppDimens.pagePadV, 0),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     // Title
@@ -157,7 +161,7 @@ class _TaskDetailContent extends ConsumerWidget {
 
                     // Description
                     if (task.description?.isNotEmpty == true) ...[
-                      const Gap(6),
+                      const Gap(AppDimens.spaceSm),
                       Text(
                         task.description!,
                         style: Theme.of(context)
@@ -171,22 +175,22 @@ class _TaskDetailContent extends ConsumerWidget {
                       ),
                     ],
 
-                    const Gap(20),
+                    const Gap(AppDimens.pagePadV),
 
                     // Completion status card
                     _CompletionCard(task: task, notifier: notifier),
 
-                    const Gap(12),
+                    const Gap(AppDimens.spaceXl),
 
                     // Meta card
                     _MetaCard(task: task),
 
-                    const Gap(24),
+                    const Gap(AppDimens.space24),
 
                     // Subtasks header
                     _SubtasksHeader(task: task, notifier: notifier),
 
-                    const Gap(10),
+                    const Gap(AppDimens.spaceLg),
                   ]),
                 ),
               ),
@@ -194,7 +198,8 @@ class _TaskDetailContent extends ConsumerWidget {
               // ── Subtask rows ────────────────────────────────────
               if (task.subtasks.isNotEmpty)
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppDimens.pagePadV, 0, AppDimens.pagePadV, 0),
                   sliver: SliverList.builder(
                     itemCount: task.subtasks.length,
                     itemBuilder: (ctx, i) {
@@ -225,7 +230,8 @@ class _TaskDetailContent extends ConsumerWidget {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppDimens.pagePadV, 0, AppDimens.pagePadV, 0),
                   sliver: SliverToBoxAdapter(
                       child: Text(
                       task.depth < 4
@@ -240,7 +246,7 @@ class _TaskDetailContent extends ConsumerWidget {
                   ),
                 ),
 
-              const SliverToBoxAdapter(child: Gap(120)),
+              const SliverToBoxAdapter(child: Gap(AppDimens.listBottomPad)),
             ],
           ),
         ),
@@ -285,10 +291,11 @@ class _HeroImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppDimens.radiusSheet)),
       child: Container(
         width: double.infinity,
-        height: 220,
+        height: AppDimens.heroImageHeight,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.centerLeft,
@@ -305,7 +312,7 @@ class _HeroImage extends StatelessWidget {
     if (task.imagePath != null) {
       return Image.file(File(task.imagePath!),
           width: double.infinity,
-          height: 220,
+          height: AppDimens.heroImageHeight,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => _defaultCentered());
     }
@@ -313,10 +320,10 @@ class _HeroImage extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: task.imageUrl!,
         width: double.infinity,
-        height: 220,
+        height: AppDimens.heroImageHeight,
         fit: BoxFit.cover,
         placeholder: (_, __) =>
-        const Center(child: CircularProgressIndicator()),
+            const Center(child: CircularProgressIndicator()),
         errorWidget: (_, __, ___) => _defaultCentered(),
       );
     }
@@ -326,8 +333,8 @@ class _HeroImage extends StatelessWidget {
   Widget _defaultCentered() => Center(
     child: Image.asset(
       'assets/images/default_task.png',
-      width: 110,
-      height: 110,
+      width: AppDimens.subDetailRowH / 2,
+      height: AppDimens.subDetailRowH / 2,
       fit: BoxFit.contain,
     ),
   );
@@ -340,35 +347,33 @@ class _CompletionCard extends StatelessWidget {
   final TaskDetailNotifier notifier;
   const _CompletionCard({required this.task, required this.notifier});
 
-  // Same colour logic as TaskCard on the home page
   Color _progressColor(double pct, ThemeData theme) {
     if (task.isOverdue) return theme.colorScheme.error;
-    if (pct >= 1.0) return const Color(0xFF00C896); // green
-    if (pct >= 0.5) return const Color(0xFFFF9F43); // orange
-    return const Color(0xFF6C63FF);                  // primary
+    if (pct >= 1.0) return AppTheme.successGreen;
+    if (pct >= 0.5) return AppTheme.warningOrange;
+    return AppTheme.primaryColor;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme  = Theme.of(context);
-    final pct    = (task.completionPercentage / 100).clamp(0.0, 1.0);
-    final color  = _progressColor(pct, theme);
-    final isDark = theme.brightness == Brightness.dark;
+    final theme   = Theme.of(context);
+    final pct     = (task.completionPercentage / 100).clamp(0.0, 1.0);
+    final color   = _progressColor(pct, theme);
+    final isDark  = theme.brightness == Brightness.dark;
     final bgColor = isDark
         ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55)
         : const Color(0xFFF0F0F0);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppDimens.pagePadH),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppDimens.radiusXl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Label
           Text(
             AppStrings.completionStatusLabel,
             style: theme.textTheme.labelSmall?.copyWith(
@@ -377,9 +382,8 @@ class _CompletionCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const Gap(4),
+          const Gap(AppDimens.spaceXs),
 
-          // Percentage — same colour as the progress bar
           Text(
             '${task.completionPercentage.round()}%',
             style: theme.textTheme.headlineMedium?.copyWith(
@@ -387,23 +391,19 @@ class _CompletionCard extends StatelessWidget {
               color: color,
             ),
           ),
-          const Gap(8),
+          const Gap(AppDimens.spaceMd),
 
-          // Progress bar — dynamic colour matching home page
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppDimens.progressBarRadius),
             child: LinearProgressIndicator(
               value: pct,
-              minHeight: 7,
+              minHeight: AppDimens.progressBarHeightLg,
               backgroundColor: color.withValues(alpha: 0.12),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
-          const Gap(8),
+          const Gap(AppDimens.spaceMd),
 
-          // If the task has subtasks: show how many are done.
-          // If it has NO subtasks: show the manual slider so the user
-          // can drag to set partial completion themselves.
           if (task.subtasks.isNotEmpty)
             Text(
               '${task.completedSubtaskCount}${AppStrings.subtaskOf}${task.totalSubtaskCount} subtasks${AppStrings.subtaskCompletedSuffix}',
@@ -427,12 +427,12 @@ class _CompletionCard extends StatelessWidget {
             ),
           ],
 
-          // Completed date
           if (task.completedAt != null) ...[
-            const Gap(6),
+            const Gap(AppDimens.spaceSm),
             Row(children: [
-              Icon(Icons.check_circle, size: 13, color: color),
-              const Gap(4),
+              Icon(Icons.check_circle,
+                  size: AppDimens.fontBase, color: color),
+              const Gap(AppDimens.spaceXs),
               Text(
                 '${AppStrings.metaCompleted}${DateFormat('MMM d, yyyy').format(task.completedAt!)}',
                 style: theme.textTheme.labelSmall?.copyWith(color: color),
@@ -461,19 +461,21 @@ class _MetaCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppDimens.pagePadH,
+          vertical: AppDimens.spaceXl),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppDimens.radiusXl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _metaRow('📅', '${AppStrings.metaCreated}${DateFormat('MMM d, yyyy').format(task.createdAt)}', theme),
-          const Gap(5),
+          const Gap(AppDimens.spaceSm - 1),
           _metaRow('✏️', '${AppStrings.metaModified}${DateFormat('MMM d, yyyy').format(task.updatedAt)}', theme),
           if (task.dueDate != null) ...[
-            const Gap(5),
+            const Gap(AppDimens.spaceSm - 1),
             _metaRow(
               task.isOverdue ? '🔴' : '🗓️',
               '${AppStrings.metaDue}${DateFormat('MMM d, yyyy').format(task.dueDate!)}${task.isOverdue ? AppStrings.metaOverdue : ''}',
@@ -490,8 +492,8 @@ class _MetaCard extends StatelessWidget {
       {Color? color}) {
     return Row(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 14)),
-        const Gap(8),
+        Text(emoji, style: const TextStyle(fontSize: AppDimens.fontLg)),
+        const Gap(AppDimens.spaceMd),
         Text(
           text,
           style: theme.textTheme.bodySmall?.copyWith(
@@ -527,7 +529,8 @@ class _SubtasksHeader extends StatelessWidget {
         const Spacer(),
         if (task.depth < 4)
           TextButton.icon(
-            icon: const Icon(Icons.add_circle_outline, size: 16),
+            icon: const Icon(Icons.add_circle_outline,
+                size: AppDimens.pagePadH),
             label: const Text(AppStrings.btnAdd),
             onPressed: () => _showAddSubtask(context),
           ),
@@ -539,6 +542,7 @@ class _SubtasksHeader extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      showDragHandle: true,
       builder: (_) => TaskFormSheet(
         title: AppStrings.addSubtaskTitle,
         onSubmit: (title, desc, imagePath, imageUrl, dueDate, priority) =>
@@ -581,18 +585,19 @@ class _SubtaskRow extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding:
-        const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        margin: const EdgeInsets.only(bottom: AppDimens.spaceLg),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppDimens.cardPad,
+            vertical: AppDimens.cardPad),
         decoration: BoxDecoration(
           color: isDark
-              ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
+              ? theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.35)
               : const Color(0xFFF2F2F5),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppDimens.radiusXl),
         ),
         child: Row(
           children: [
-            // Animated checkbox
             GestureDetector(
               onTap: onToggle,
               behavior: HitTestBehavior.opaque,
@@ -601,24 +606,23 @@ class _SubtaskRow extends StatelessWidget {
                 width: 26,
                 height: 26,
                 decoration: BoxDecoration(
-                  color: completed ? Colors.green : Colors.transparent,
+                  color: completed ? AppTheme.successGreen : Colors.transparent,
                   border: Border.all(
                     color: completed
-                        ? Colors.green
+                        ? AppTheme.successGreen
                         : theme.colorScheme.primary,
                     width: 2,
                   ),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(AppDimens.spaceSm),
                 ),
                 child: completed
-                    ? const Icon(Icons.check,
-                    size: 16, color: Colors.white)
+                    ? Icon(Icons.check,
+                        size: AppDimens.pagePadH, color: Colors.white)
                     : null,
               ),
             ),
-            const Gap(14),
+            const Gap(AppDimens.cardPad),
 
-            // Title + progress label
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,22 +632,22 @@ class _SubtaskRow extends StatelessWidget {
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       decoration:
-                      completed ? TextDecoration.lineThrough : null,
+                          completed ? TextDecoration.lineThrough : null,
                       color: completed
                           ? theme.colorScheme.onSurfaceVariant
                           : theme.colorScheme.onSurface,
                     ),
                   ),
-                  const Gap(2),
+                  const Gap(AppDimens.spaceXxs),
                   Text(
                     completed
                         ? AppStrings.subtaskCompleted
                         : subtask.subtasks.isEmpty
-                        ? '${subtask.completionPercentage.round()}${AppStrings.subtaskPercentSuffix}'
-                        : '$completedCount${AppStrings.subtaskOf}$totalCount${AppStrings.subtaskCompletedSuffix}',
+                            ? '${subtask.completionPercentage.round()}${AppStrings.subtaskPercentSuffix}'
+                            : '$completedCount${AppStrings.subtaskOf}$totalCount${AppStrings.subtaskCompletedSuffix}',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: completed
-                          ? Colors.green.shade600
+                          ? AppTheme.successGreen
                           : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -651,23 +655,22 @@ class _SubtaskRow extends StatelessWidget {
               ),
             ),
 
-                      // Arrow + delete
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.arrow_forward_ios,
-                              size: 14,
-                              color: theme.colorScheme.onSurfaceVariant),
-                          const Gap(6),
-                          GestureDetector(
-                            onTap: onDelete, // routes to _confirmDelete in parent
-                            child: Icon(Icons.delete_outline,
-                                size: 18,
-                                color: theme.colorScheme.error
-                                    .withValues(alpha: 0.7)),
-                          ),
-                        ],
-                      ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.arrow_forward_ios,
+                    size: AppDimens.iconSm,
+                    color: theme.colorScheme.onSurfaceVariant),
+                const Gap(AppDimens.spaceSm),
+                GestureDetector(
+                  onTap: onDelete,
+                  child: Icon(Icons.delete_outline,
+                      size: AppDimens.iconLg,
+                      color:
+                          theme.colorScheme.error.withValues(alpha: 0.7)),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -694,33 +697,35 @@ class _BottomActionBar extends StatelessWidget {
         ),
       ),
       padding: EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        MediaQuery.paddingOf(context).bottom + 12,
+        AppDimens.pagePadH,
+        AppDimens.spaceXl,
+        AppDimens.pagePadH,
+        MediaQuery.paddingOf(context).bottom + AppDimens.spaceXl,
       ),
       child: Row(
         children: [
           Expanded(
             child: _Btn(
               label: AppStrings.btnEdit,
-              color: const Color(0xFF3D6FFF),
+              color: AppTheme.primaryColor,
               onTap: () => _showEdit(context),
             ),
           ),
-          const Gap(8),
+          const Gap(AppDimens.spaceMd),
           Expanded(
             child: _Btn(
-              label: task.isCompleted ? AppStrings.btnUndo : AppStrings.btnComplete,
-              color: Colors.green.shade600,
+              label: task.isCompleted
+                  ? AppStrings.btnUndo
+                  : AppStrings.btnComplete,
+              color: AppTheme.successGreen,
               onTap: () => notifier.toggleCompletion(task.id),
             ),
           ),
-          const Gap(8),
+          const Gap(AppDimens.spaceMd),
           Expanded(
             child: _Btn(
               label: AppStrings.btnDelete,
-              color: Colors.red.shade500,
+              color: Theme.of(context).colorScheme.error,
               onTap: () => _confirmDelete(context),
             ),
           ),
@@ -733,6 +738,7 @@ class _BottomActionBar extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      showDragHandle: true,
       builder: (_) => TaskFormSheet(
         title: AppStrings.editTaskTitle,
         initialTitle: task.title,
@@ -796,19 +802,19 @@ class _Btn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: color,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppDimens.actionBtnRadius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppDimens.actionBtnRadius),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: AppDimens.pagePadH),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w700,
-              fontSize: 14,
+              fontSize: AppDimens.fontLg,
             ),
           ),
         ),
@@ -816,3 +822,9 @@ class _Btn extends StatelessWidget {
     );
   }
 }
+
+
+
+
+
+

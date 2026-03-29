@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_dimens.dart';
 import '../../../domain/entities/task.dart';
 
 class TaskCard extends StatelessWidget {
@@ -40,21 +41,21 @@ class TaskCard extends StatelessWidget {
       },
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(right: AppDimens.space24),
+        margin: const EdgeInsets.only(bottom: AppDimens.spaceXl),
         decoration: BoxDecoration(
           color: theme.colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppDimens.radiusCard),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.delete_rounded,
-                color: theme.colorScheme.error, size: 24),
-            const Gap(4),
-            Text('Delete',
+                color: theme.colorScheme.error, size: AppDimens.iconXxl),
+            const Gap(AppDimens.spaceXs),
+            Text(AppStrings.btnDelete,
                 style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppDimens.fontSm,
                     fontWeight: FontWeight.w700,
                     color: theme.colorScheme.error)),
           ],
@@ -63,12 +64,10 @@ class TaskCard extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: AppDimens.spaceXl),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF1C1B2E)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            color: isDark ? const Color(0xFF1C1B2E) : Colors.white,
+            borderRadius: BorderRadius.circular(AppDimens.radiusCard),
             border: Border.all(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.07)
@@ -80,30 +79,31 @@ class TaskCard extends StatelessWidget {
                 : [
                     BoxShadow(
                       color: const Color(0xFF6C63FF).withValues(alpha: 0.06),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      blurRadius: AppDimens.spaceXl,
+                      offset: const Offset(0, AppDimens.spaceXs),
                     ),
                   ],
           ),
           child: Column(
             children: [
-              // ── Main row ─────────────────────────────────────────────────
+              // ── Main row ──────────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                padding: const EdgeInsets.fromLTRB(
+                    AppDimens.cardPad, AppDimens.cardPad,
+                    AppDimens.cardPad, AppDimens.spaceLg),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Priority stripe + Thumbnail ─────────────────────────
+                    // ── Priority dot + Thumbnail ───────────────────────
                     Stack(
                       children: [
                         _Thumbnail(task: task),
-                        // Priority colour dot
                         Positioned(
                           top: 0,
                           right: 0,
                           child: Container(
-                            width: 10,
-                            height: 10,
+                            width: AppDimens.priorityDot,
+                            height: AppDimens.priorityDot,
                             decoration: BoxDecoration(
                               color: priorityColor,
                               shape: BoxShape.circle,
@@ -111,21 +111,21 @@ class TaskCard extends StatelessWidget {
                                 color: isDark
                                     ? const Color(0xFF1C1B2E)
                                     : Colors.white,
-                                width: 2,
+                                width: AppDimens.priorityDotBorder,
                               ),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const Gap(12),
+                    const Gap(AppDimens.spaceXl),
 
-                    // ── Text content ────────────────────────────────────────
+                    // ── Text content ───────────────────────────────────
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title row
+                          // Title + % badge
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -136,7 +136,7 @@ class TaskCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 14,
+                                    fontSize: AppDimens.fontLg,
                                     decoration: task.isCompleted
                                         ? TextDecoration.lineThrough
                                         : null,
@@ -149,20 +149,20 @@ class TaskCard extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              const Gap(8),
-                              // Completion % badge
+                              const Gap(AppDimens.spaceMd),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
+                                    horizontal: AppDimens.spaceMd,
+                                    vertical: AppDimens.spaceXxs + 1),
                                 decoration: BoxDecoration(
-                                  color:
-                                      progressColor.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(20),
+                                  color: progressColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(
+                                      AppDimens.radiusChip),
                                 ),
                                 child: Text(
                                   '${task.completionPercentage.round()}%',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: AppDimens.fontSm,
                                     fontWeight: FontWeight.w800,
                                     color: progressColor,
                                   ),
@@ -170,17 +170,17 @@ class TaskCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const Gap(5),
+                          const Gap(AppDimens.spaceSm - 1),
 
-                          // Meta row — subtasks + status
+                          // Meta row — subtask count + status + delete
                           Row(
                             children: [
                               if (task.subtasks.isNotEmpty) ...[
                                 Icon(Icons.account_tree_outlined,
-                                    size: 11,
+                                    size: AppDimens.iconXs,
                                     color: theme.colorScheme.onSurfaceVariant
                                         .withValues(alpha: 0.7)),
-                                const Gap(3),
+                                const Gap(AppDimens.spaceXxs + 1),
                                 Text(
                                   '${task.subtasks.length}',
                                   style: theme.textTheme.labelSmall?.copyWith(
@@ -188,7 +188,7 @@ class TaskCard extends StatelessWidget {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const Gap(8),
+                                const Gap(AppDimens.spaceMd),
                               ],
                               Expanded(
                                 child: Text(
@@ -199,25 +199,30 @@ class TaskCard extends StatelessWidget {
                                         ? theme.colorScheme.error
                                         : task.isCompleted
                                             ? AppTheme.successGreen
-                                            : theme.colorScheme
-                                                .onSurfaceVariant,
-                                    fontWeight: (task.isOverdue ||
-                                            task.isCompleted)
+                                            : theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: (task.isOverdue || task.isCompleted)
                                         ? FontWeight.w600
                                         : FontWeight.normal,
                                   ),
                                 ),
                               ),
-                              // Delete icon
+                              // Delete button — circular tinted icon
+                              const Gap(AppDimens.spaceSm),
                               GestureDetector(
                                 onTap: onDelete,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 8),
+                                child: Container(
+                                  width: AppDimens.deleteButtonSize,
+                                  height: AppDimens.deleteButtonSize,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.error.withValues(
+                                        alpha: isDark ? 0.15 : 0.08),
+                                    shape: BoxShape.circle,
+                                  ),
                                   child: Icon(
                                     Icons.delete_outline_rounded,
-                                    size: 17,
+                                    size: AppDimens.iconMd,
                                     color: theme.colorScheme.error
-                                        .withValues(alpha: 0.55),
+                                        .withValues(alpha: 0.85),
                                   ),
                                 ),
                               ),
@@ -230,14 +235,16 @@ class TaskCard extends StatelessWidget {
                 ),
               ),
 
-              // ── Progress bar ─────────────────────────────────────────────
+              // ── Progress bar ──────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                padding: const EdgeInsets.fromLTRB(AppDimens.cardPad, 0,
+                    AppDimens.cardPad, AppDimens.cardPad),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius:
+                      BorderRadius.circular(AppDimens.progressBarRadius),
                   child: LinearProgressIndicator(
                     value: pct.clamp(0.0, 1.0),
-                    minHeight: 5,
+                    minHeight: AppDimens.progressBarHeight,
                     backgroundColor: progressColor.withValues(alpha: 0.1),
                     valueColor: AlwaysStoppedAnimation<Color>(progressColor),
                   ),
@@ -295,9 +302,9 @@ class _Thumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const size = 56.0;
+    const size = AppDimens.thumbnailCard;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppDimens.thumbnailCardRad),
       child: SizedBox(
         width: size,
         height: size,
@@ -309,11 +316,12 @@ class _Thumbnail extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.40),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius:
+                      BorderRadius.circular(AppDimens.thumbnailCardRad),
                 ),
                 child: const Center(
                   child: Icon(Icons.check_rounded,
-                      color: Colors.white, size: 22),
+                      color: Colors.white, size: AppDimens.iconXxl - 2),
                 ),
               ),
           ],
@@ -325,17 +333,13 @@ class _Thumbnail extends StatelessWidget {
   Widget _imageWidget(double size) {
     if (task.imagePath != null) {
       return Image.file(File(task.imagePath!),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
+          width: size, height: size, fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => _defaultImage(size));
     }
     if (task.imageUrl != null) {
       return CachedNetworkImage(
           imageUrl: task.imageUrl!,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
+          width: size, height: size, fit: BoxFit.cover,
           errorWidget: (_, __, ___) => _defaultImage(size));
     }
     return _defaultImage(size);
@@ -351,7 +355,7 @@ class _Thumbnail extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [Color(0xFF6C63FF), Color(0xFF8B5CF6)],
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppDimens.thumbnailCardRad),
       ),
       child: Center(
         child: Image.asset(
@@ -362,7 +366,7 @@ class _Thumbnail extends StatelessWidget {
           errorBuilder: (_, __, ___) => const Icon(
             Icons.task_alt_rounded,
             color: Colors.white70,
-            size: 26,
+            size: AppDimens.iconXxl,
           ),
         ),
       ),

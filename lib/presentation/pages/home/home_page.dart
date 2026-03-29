@@ -13,6 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_dimens.dart';
 import '../../../domain/entities/task.dart';
 import '../../../domain/usecases/task/create_task_usecase.dart';
 import '../../state/task_list_notifier.dart';
@@ -45,7 +46,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         slivers: [
           // ── Gradient header SliverAppBar ──────────────────────────────────
           SliverAppBar(
-            expandedHeight: 130,
+            expandedHeight: AppDimens.headerExpandedH,
             floating: false,
             pinned: true,
             snap: false,
@@ -59,37 +60,38 @@ class _HomePageState extends ConsumerState<HomePage> {
             actions: [
               // Theme toggle
               Container(
-                margin: const EdgeInsets.only(right: 4),
+                margin: const EdgeInsets.only(right: AppDimens.appBarBtnMarginR),
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.08)
                       : Colors.black.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppDimens.appBarBtnRadius),
                 ),
                 child: IconButton(
                   icon: Icon(
                     isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    size: 20,
+                    size: AppDimens.appBarIconSize,
                   ),
                   tooltip: AppStrings.toggleTheme,
-                  onPressed: () =>
-                      ref.read(themeModeProvider.notifier).toggle(),
+                  onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
                 ),
               ),
               // Backup menu
               Container(
-                margin: const EdgeInsets.only(right: 12),
+                margin: const EdgeInsets.only(right: AppDimens.appBarBtnMarginRLast),
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.08)
                       : Colors.black.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppDimens.appBarBtnRadius),
                 ),
                 child: PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_horiz_rounded, size: 20),
-                  offset: const Offset(0, 44),
+                  icon: const Icon(Icons.more_horiz_rounded,
+                      size: AppDimens.appBarIconSize),
+                  offset: const Offset(0, AppDimens.appBarMenuOffset),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
+                      borderRadius:
+                          BorderRadius.circular(AppDimens.appBarMenuRadius)),
                   onSelected: _handleMenuAction,
                   itemBuilder: (ctx) => [
                     _menuItem('export', Icons.upload_rounded,
@@ -132,7 +134,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                           : _FilterEmptyState(filter: filter),
                     )
                   : SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+                      padding: const EdgeInsets.fromLTRB(
+                          AppDimens.pagePadH, AppDimens.spaceXs,
+                          AppDimens.pagePadH, AppDimens.listBottomPad),
                       sliver: SliverList.builder(
                         itemCount: filteredTasks.length,
                         itemBuilder: (ctx, i) {
@@ -143,8 +147,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             onToggle: () => ref
                                 .read(taskListProvider.notifier)
                                 .toggleCompletion(task.id),
-                            onDelete: () =>
-                                _confirmDelete(context, ref, task),
+                            onDelete: () => _confirmDelete(context, ref, task),
                           )
                               .animate(delay: (i * 40).ms)
                               .fadeIn(duration: 280.ms)
@@ -174,8 +177,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     return PopupMenuItem(
       value: value,
       child: Row(children: [
-        Icon(icon, size: 18),
-        const Gap(10),
+        Icon(icon, size: AppDimens.iconLg),
+        const Gap(AppDimens.spaceLg),
         Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
       ]),
     );
@@ -186,6 +189,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      showDragHandle: true,
       builder: (ctx) => TaskFormSheet(
         title: AppStrings.createTaskTitle,
         onSubmit: (title, desc, imagePath, imageUrl, dueDate, priority) {
@@ -318,7 +322,8 @@ class _HeaderBanner extends StatelessWidget {
     final active = total - done;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+      padding: const EdgeInsets.fromLTRB(
+          AppDimens.pagePadV, 56, AppDimens.pagePadV, AppDimens.pagePadH),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -359,13 +364,13 @@ class _HeaderBanner extends StatelessWidget {
               ],
             ),
           ),
-          const Gap(5),
+          const Gap(AppDimens.spaceSm - 1),
           Text(
             total == 0
                 ? AppStrings.appTagline
                 : '$active ${AppStrings.filterActive.toLowerCase()} · $done ${AppStrings.filterDone.toLowerCase()}',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppDimens.fontBase,
               fontWeight: FontWeight.w500,
               color: isDark
                   ? const Color(0xFFABA9C3)
@@ -406,7 +411,9 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(
+          AppDimens.pagePadH, AppDimens.spaceXl,
+          AppDimens.pagePadH, AppDimens.spaceXs),
       child: Row(
         children: [
           _FilterChip(
@@ -416,7 +423,7 @@ class _FilterBar extends StatelessWidget {
             onTap: () => onFilterChanged(null),
             theme: theme,
           ),
-          const Gap(8),
+          const Gap(AppDimens.spaceMd),
           _FilterChip(
             label: AppStrings.filterActive,
             count: _count('active'),
@@ -425,7 +432,7 @@ class _FilterBar extends StatelessWidget {
             theme: theme,
             activeColor: AppTheme.primaryColor,
           ),
-          const Gap(8),
+          const Gap(AppDimens.spaceMd),
           _FilterChip(
             label: AppStrings.filterDone,
             count: _count('completed'),
@@ -467,16 +474,18 @@ class _FilterChip extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppDimens.pagePadH,
+            vertical: AppDimens.filterChipHeight),
         decoration: BoxDecoration(
           color: selected
               ? color
               : (isDark ? const Color(0xFF252438) : const Color(0xFFF0EFFE)),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AppDimens.radiusChip),
           boxShadow: selected
               ? [BoxShadow(
                   color: color.withValues(alpha: 0.35),
-                  blurRadius: 8,
+                  blurRadius: AppDimens.spaceMd,
                   offset: const Offset(0, 3))]
               : null,
         ),
@@ -486,7 +495,7 @@ class _FilterChip extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppDimens.fontBase,
                 fontWeight: FontWeight.w700,
                 color: selected
                     ? Colors.white
@@ -495,20 +504,21 @@ class _FilterChip extends StatelessWidget {
               ),
             ),
             if (count > 0) ...[
-              const Gap(6),
+              const Gap(AppDimens.spaceSm),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimens.filterBadgePadH,
+                    vertical: AppDimens.filterBadgePadV),
                 decoration: BoxDecoration(
                   color: selected
                       ? Colors.white.withValues(alpha: 0.25)
                       : color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(AppDimens.radiusChip),
                 ),
                 child: Text(
                   '$count',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppDimens.fontSm,
                     fontWeight: FontWeight.w800,
                     color: selected ? Colors.white : color,
                   ),
@@ -537,16 +547,12 @@ class _FilterEmptyState extends StatelessWidget {
         ? Icons.radio_button_unchecked_rounded
         : Icons.check_circle_outline_rounded;
     final color    = isActive ? AppTheme.primaryColor : AppTheme.successGreen;
-    final title    = isActive
-        ? AppStrings.noActiveTasks
-        : AppStrings.noCompletedTasks;
-    final subtitle = isActive
-        ? AppStrings.noActiveSubtitle
-        : AppStrings.noCompletedSubtitle;
+    final title    = isActive ? AppStrings.noActiveTasks : AppStrings.noCompletedTasks;
+    final subtitle = isActive ? AppStrings.noActiveSubtitle : AppStrings.noCompletedSubtitle;
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.all(AppDimens.space40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -557,13 +563,13 @@ class _FilterEmptyState extends StatelessWidget {
                 color: color.withValues(alpha: isDark ? 0.15 : 0.10),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 44, color: color),
+              child: Icon(icon, size: AppDimens.iconHero + 8, color: color),
             ),
-            const Gap(24),
+            const Gap(AppDimens.space24),
             Text(title,
                 style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-            const Gap(10),
+            const Gap(AppDimens.spaceLg),
             Text(subtitle,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -587,32 +593,33 @@ class _ErrorView extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppDimens.space32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppDimens.pagePadV),
               decoration: BoxDecoration(
                 color: theme.colorScheme.errorContainer,
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.wifi_off_rounded,
-                  size: 36, color: theme.colorScheme.error),
+                  size: AppDimens.iconHero, color: theme.colorScheme.error),
             ),
-            const Gap(20),
+            const Gap(AppDimens.pagePadV),
             Text(AppStrings.errorTitle,
                 style: theme.textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700)),
-            const Gap(8),
+            const Gap(AppDimens.spaceMd),
             Text(message,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant)),
-            const Gap(20),
+            const Gap(AppDimens.pagePadV),
             FilledButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
+              icon: const Icon(Icons.refresh_rounded,
+                  size: AppDimens.iconLg + 4),
               label: const Text(AppStrings.errorRetry),
             ),
           ],

@@ -4,16 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:todo_app/core/utils/result.dart';
-import 'package:todo_app/domain/entities/task.dart';
-import 'package:todo_app/domain/repositories/task_manager_repository.dart';
-import 'package:todo_app/domain/usecases/task/create_task_usecase.dart';
-import 'package:todo_app/domain/usecases/task/delete_task_usecase.dart';
-import 'package:todo_app/domain/usecases/task/get_root_tasks_usecase.dart';
-import 'package:todo_app/domain/usecases/task/toggle_completion_usecase.dart';
-import 'package:todo_app/domain/usecases/task/update_task_usecase.dart';
-import 'package:todo_app/presentation/providers/providers.dart';
-import 'package:todo_app/presentation/state/task_list_notifier.dart';
+import 'package:taskora/core/utils/result.dart';
+import 'package:taskora/domain/entities/task.dart';
+import 'package:taskora/domain/repositories/task_manager_repository.dart';
+import 'package:taskora/domain/usecases/task/create_task_usecase.dart';
+import 'package:taskora/domain/usecases/task/delete_task_usecase.dart';
+import 'package:taskora/domain/usecases/task/get_root_tasks_usecase.dart';
+import 'package:taskora/domain/usecases/task/toggle_completion_usecase.dart';
+import 'package:taskora/domain/usecases/task/update_task_usecase.dart';
+import 'package:taskora/presentation/providers/providers.dart';
+import 'package:taskora/presentation/state/task_list_notifier.dart';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 

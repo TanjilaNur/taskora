@@ -589,15 +589,6 @@ The `TaskRepository` interface is the seam point. To add cloud sync:
 2. Create `SyncedTaskRepositoryImpl` composing local + remote
 3. Swap the provider in `providers.dart` — **zero changes** to domain or presentation layers
 
-### Potential Enhancements
-- [ ] Task search / full-text filtering
-- [ ] Push notifications for due date reminders
-- [ ] Drag-and-drop task reordering
-- [ ] Task tags / labels
-- [ ] Recurring tasks
-- [ ] iCloud / Google Drive backup destination
-- [ ] Widget (home screen glanceable task count)
-
 ---
 
 ## 📄 Licence
