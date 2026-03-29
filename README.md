@@ -1,4 +1,4 @@
-# TaskFlow — Flutter Task Manager
+# Taskora — Flutter Task Manager
 
 > A Flutter application demonstrating **Clean Architecture**, **Riverpod** state management, **Isar** local persistence, hierarchical task management, and a comprehensive unit test suite.
 
@@ -25,7 +25,7 @@
 
 ## 🗺 Overview
 
-**TaskFlow** is a comprehensive offline-first task management app. Users can create tasks, nest subtasks up to **4 levels deep**, attach thumbnail images, track hierarchical completion percentages, and back up their data — all without an internet connection.
+**Taskora** is a comprehensive offline-first task management app. Users can create tasks, nest subtasks up to **4 levels deep**, attach thumbnail images, track hierarchical completion percentages, and back up their data — all without an internet connection.
 
 The app was built against a formal product specification and satisfies every core requirement plus all bonus points:
 
