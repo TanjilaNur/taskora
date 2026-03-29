@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../domain/entities/task.dart';
 
 class TaskCard extends StatelessWidget {
@@ -27,150 +29,218 @@ class TaskCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final pct = task.completionPercentage / 100;
     final progressColor = _progressColor(pct, task.isOverdue, theme);
+    final priorityColor = _priorityColor(task.priority);
 
     return Dismissible(
       key: ValueKey(task.id),
       direction: DismissDirection.endToStart,
-      confirmDismiss: (_) async => false, // confirmation is handled by onDelete
+      confirmDismiss: (_) async {
+        onDelete();
+        return false;
+      },
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.only(right: 24),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: theme.colorScheme.errorContainer,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
         ),
-        child: Icon(Icons.delete_outline,
-            color: theme.colorScheme.onErrorContainer, size: 26),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.delete_rounded,
+                color: theme.colorScheme.error, size: 24),
+            const Gap(4),
+            Text('Delete',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.error)),
+          ],
+        ),
       ),
-      onDismissed: (_) => onDelete(),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
+            color: isDark
+                ? const Color(0xFF1C1B2E)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.08),
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.black.withValues(alpha: 0.06),
               width: 1,
             ),
             boxShadow: isDark
                 ? null
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+                      color: const Color(0xFF6C63FF).withValues(alpha: 0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
             children: [
-              // ── Thumbnail ──────────────────────────────────────────
-              _Thumbnail(task: task),
-              const Gap(12),
-
-              // ── Right column ────────────────────────────────────────
-              Expanded(
-                child: Column(
+              // ── Main row ─────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Title + percentage on same line
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    // ── Priority stripe + Thumbnail ─────────────────────────
+                    Stack(
                       children: [
-                        Expanded(
-                          child: Text(
-                            task.title,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13.5,
-                              decoration: task.isCompleted
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                              color: task.isCompleted
-                                  ? theme.colorScheme.onSurfaceVariant
-                                  : theme.colorScheme.onSurface,
+                        _Thumbnail(task: task),
+                        // Priority colour dot
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: priorityColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF1C1B2E)
+                                    : Colors.white,
+                                width: 2,
+                              ),
                             ),
-                          ),
-                        ),
-                        const Gap(6),
-                        Text(
-                          '${task.completionPercentage.round()}%',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: progressColor,
-                          ),
-                        ),
-                        const Gap(4),
-                        // ── Delete button ──────────────────────────────
-                        GestureDetector(
-                          onTap: onDelete,
-                          child: Icon(
-                            Icons.delete_outline,
-                            size: 18,
-                            color: theme.colorScheme.error
-                                .withValues(alpha: 0.7),
                           ),
                         ),
                       ],
                     ),
+                    const Gap(12),
 
-                    const Gap(3),
-
-                    Row(
-                      children: [
-                        if (task.subtasks.isNotEmpty) ...[
-                          Text(
-                            '${task.subtasks.length} subtask${task.subtasks.length > 1 ? 's' : ''}',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                    // ── Text content ────────────────────────────────────────
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title row
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  task.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    decoration: task.isCompleted
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    decorationColor:
+                                        theme.colorScheme.onSurfaceVariant,
+                                    color: task.isCompleted
+                                        ? theme.colorScheme.onSurfaceVariant
+                                        : theme.colorScheme.onSurface,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ),
+                              const Gap(8),
+                              // Completion % badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color:
+                                      progressColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '${task.completionPercentage.round()}%',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: progressColor,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            ' • ',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant),
+                          const Gap(5),
+
+                          // Meta row — subtasks + status
+                          Row(
+                            children: [
+                              if (task.subtasks.isNotEmpty) ...[
+                                Icon(Icons.account_tree_outlined,
+                                    size: 11,
+                                    color: theme.colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.7)),
+                                const Gap(3),
+                                Text(
+                                  '${task.subtasks.length}',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const Gap(8),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  _statusLabel(),
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: task.isOverdue
+                                        ? theme.colorScheme.error
+                                        : task.isCompleted
+                                            ? AppTheme.successGreen
+                                            : theme.colorScheme
+                                                .onSurfaceVariant,
+                                    fontWeight: (task.isOverdue ||
+                                            task.isCompleted)
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ),
+                              // Delete icon
+                              GestureDetector(
+                                onTap: onDelete,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 17,
+                                    color: theme.colorScheme.error
+                                        .withValues(alpha: 0.55),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                        Expanded(
-                          child: Text(
-                            _statusLabel(),
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: task.isOverdue
-                                  ? theme.colorScheme.error
-                                  : theme.colorScheme.onSurfaceVariant,
-                              fontWeight: task.isOverdue
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const Gap(6),
-
-                    // Progress bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: pct.clamp(0.0, 1.0),
-                        minHeight: 4,
-                        backgroundColor: progressColor.withValues(alpha: 0.12),
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(progressColor),
                       ),
                     ),
                   ],
+                ),
+              ),
+
+              // ── Progress bar ─────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: pct.clamp(0.0, 1.0),
+                    minHeight: 5,
+                    backgroundColor: progressColor.withValues(alpha: 0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                  ),
                 ),
               ),
             ],
@@ -180,19 +250,18 @@ class TaskCard extends StatelessWidget {
     );
   }
 
-  // Spec: "Completed tasks will display the completion date"
   String _statusLabel() {
     if (task.isCompleted) {
       if (task.completedAt != null) {
-        return 'Completed ${DateFormat('MMM d, yyyy').format(task.completedAt!)}';
+        return '${AppStrings.statusCompleted} ${DateFormat('MMM d, yyyy').format(task.completedAt!)}';
       }
-      return 'Completed';
+      return AppStrings.statusCompleted;
     }
     if (task.isOverdue) {
-      return 'Overdue · ${DateFormat('MMM d').format(task.dueDate!)}';
+      return '${AppStrings.statusOverdue}${DateFormat('MMM d').format(task.dueDate!)}';
     }
     if (task.dueDate != null) {
-      return 'Due ${DateFormat('MMM d').format(task.dueDate!)}';
+      return '${AppStrings.statusDue}${DateFormat('MMM d').format(task.dueDate!)}';
     }
     return _timeAgo(task.createdAt);
   }
@@ -201,15 +270,21 @@ class TaskCard extends StatelessWidget {
     final diff = DateTime.now().difference(dt);
     if (diff.inDays > 0) return '${diff.inDays}d ago';
     if (diff.inHours > 0) return '${diff.inHours}h ago';
-    return 'Just now';
+    return AppStrings.statusJustNow;
   }
 
   Color _progressColor(double pct, bool overdue, ThemeData theme) {
     if (overdue) return theme.colorScheme.error;
-    if (pct >= 1.0) return const Color(0xFF4CAF50);
-    if (pct >= 0.5) return Colors.orange;
-    return const Color(0xFF3D6FFF);
+    if (pct >= 1.0) return AppTheme.successGreen;
+    if (pct >= 0.5) return AppTheme.warningOrange;
+    return AppTheme.primaryColor;
   }
+
+  Color _priorityColor(TaskPriority priority) => switch (priority) {
+        TaskPriority.high   => const Color(0xFFFF5252),
+        TaskPriority.medium => AppTheme.warningOrange,
+        TaskPriority.low    => AppTheme.successGreen,
+      };
 }
 
 // ─── Thumbnail ────────────────────────────────────────────────────────────────
@@ -220,9 +295,9 @@ class _Thumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const size = 58.0;
+    const size = 56.0;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(14),
       child: SizedBox(
         width: size,
         height: size,
@@ -232,10 +307,13 @@ class _Thumbnail extends StatelessWidget {
             _imageWidget(size),
             if (task.isCompleted)
               Container(
-                color: Colors.black.withValues(alpha: 0.35),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.40),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: const Center(
                   child: Icon(Icons.check_rounded,
-                      color: Colors.white, size: 24),
+                      color: Colors.white, size: 22),
                 ),
               ),
           ],
@@ -264,11 +342,30 @@ class _Thumbnail extends StatelessWidget {
   }
 
   Widget _defaultImage(double size) {
-    return Image.asset(
-      'assets/images/default_task.png',
+    return Container(
       width: size,
       height: size,
-      fit: BoxFit.cover,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF6C63FF), Color(0xFF8B5CF6)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Center(
+        child: Image.asset(
+          'assets/images/default_task.png',
+          width: size * 0.6,
+          height: size * 0.6,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const Icon(
+            Icons.task_alt_rounded,
+            color: Colors.white70,
+            size: 26,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,33 +1,34 @@
 import '../entities/task.dart';
 import '../../core/utils/result.dart';
 
-/// Abstract contract. The domain layer depends only on this interface,
-/// never on the concrete Isar implementation.
+/// The domain's contract for all task data operations.
+/// Presentation and domain layers depend only on this interface —
+/// the Isar implementation lives in the data layer.
 abstract interface class TaskRepository {
-  /// Fetch all root-level tasks (parentId == null) with full subtask trees.
+  /// Fetch all root tasks (no parent) with their full subtree.
   Future<Result<List<Task>>> getRootTasks();
 
-  /// Fetch a single task with its full subtask tree by id.
+  /// Fetch a single task and its full subtree by id.
   Future<Result<Task>> getTaskById(String id);
 
-  /// Create a new task. Returns the created task with db-assigned timestamps.
+  /// Create and persist a new task.
   Future<Result<Task>> createTask(Task task);
 
-  /// Update an existing task (non-recursive — subtasks are managed separately).
+  /// Update an existing task (subtasks handled separately).
   Future<Result<Task>> updateTask(Task task);
 
-  /// Delete a task and all its descendants (cascade).
+  /// Delete a task and all its descendants.
   Future<Result<void>> deleteTask(String id);
 
-  /// Toggle completion and propagate upward to parent percentage.
+  /// Toggle done/undone and propagate the change up to parent tasks.
   Future<Result<Task>> toggleCompletion(String id);
 
-  /// Update just the manual completion percentage (leaf-level slider).
+  /// Update the manual completion % on a leaf task (slider value).
   Future<Result<Task>> updateCompletionPercent(String id, double percent);
 
-  /// Export all task data as JSON bytes for backup.
+  /// Serialise all tasks to JSON bytes ready for export.
   Future<Result<List<int>>> exportBackup();
 
-  /// Import and restore tasks from backup bytes.
+  /// Replace all tasks with the data from backup bytes.
   Future<Result<void>> importBackup(List<int> bytes);
 }

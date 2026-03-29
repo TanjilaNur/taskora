@@ -4,26 +4,25 @@ import '../../domain/entities/task.dart';
 import '../../domain/usecases/task/create_task_usecase.dart';
 import '../providers/providers.dart';
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// ── States ────────────────────────────────────────────────────────────────────
 
-sealed class TaskListState {
-  const TaskListState();
-}
+sealed class TaskListState { const TaskListState(); }
 
+/// Shown while tasks are being fetched from the database.
 final class TaskListLoading extends TaskListState {
   const TaskListLoading();
 }
 
+/// Tasks loaded — also holds the active filter ('active' / 'completed' / null).
 final class TaskListLoaded extends TaskListState {
   final List<Task> tasks;
-  final String? filter; // null = all, 'active', 'completed'
+  final String? filter; // null = show all
 
   const TaskListLoaded(this.tasks, {this.filter});
 
-  // BUG-05 FIX: sort by createdAt descending so newest tasks appear first
+  /// Returns tasks sorted newest-first, filtered by [filter].
   List<Task> get filteredTasks {
-    final sorted = [...tasks]
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final sorted = [...tasks]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return switch (filter) {
       'active'    => sorted.where((t) => !t.isCompleted).toList(),
       'completed' => sorted.where((t) => t.isCompleted).toList(),
@@ -31,7 +30,8 @@ final class TaskListLoaded extends TaskListState {
     };
   }
 
-  // BUG-04 FIX: copyWith so filter can be carried through reloads
+  /// Returns a copy with optional overrides.
+  /// Use [clearFilter] to reset the filter to null.
   TaskListLoaded copyWith({
     List<Task>? tasks,
     String? filter,
@@ -44,13 +44,16 @@ final class TaskListLoaded extends TaskListState {
   }
 }
 
+/// Something went wrong — [message] is shown in the UI.
 final class TaskListError extends TaskListState {
   final String message;
   const TaskListError(this.message);
 }
 
-// ─── Notifier ─────────────────────────────────────────────────────────────────
+// ── Notifier ──────────────────────────────────────────────────────────────────
 
+/// Manages the home screen task list.
+/// Preserves the active filter across reloads so the tab never resets.
 class TaskListNotifier extends StateNotifier<TaskListState> {
   final Ref _ref;
 
@@ -58,21 +61,21 @@ class TaskListNotifier extends StateNotifier<TaskListState> {
     load();
   }
 
-  // Capture the current filter before any reload so it can be restored
+  // Grab the current filter before going through Loading so we can restore it.
   String? get _currentFilter =>
       state is TaskListLoaded ? (state as TaskListLoaded).filter : null;
 
   Future<void> load() async {
-    final previousFilter = _currentFilter; // BUG-04 FIX: preserve filter
-    state = const TaskListLoading();
+    // Don't flash Loading if we already have data — update in place
+    final previousFilter = _currentFilter;
+    if (state is! TaskListLoaded) state = const TaskListLoading();
     final result = await _ref.read(getRootTasksUseCaseProvider).call();
     result.fold(
-      ok: (tasks) => state = TaskListLoaded(tasks, filter: previousFilter),
-      err: (e)    => state = TaskListError(e.toString()),
+      ok:  (tasks) => state = TaskListLoaded(tasks, filter: previousFilter),
+      err: (e)     => state = TaskListError(e.toString()),
     );
   }
 
-  // BUG-01 FIX: error path now sets TaskListError instead of calling load()
   Future<void> createTask(CreateTaskParams params) async {
     final result = await _ref.read(createTaskUseCaseProvider).call(params);
     result.fold(
@@ -81,7 +84,6 @@ class TaskListNotifier extends StateNotifier<TaskListState> {
     );
   }
 
-  // BUG-06 FIX: updateTask was completely missing — added with proper error handling
   Future<void> updateTask(Task task) async {
     final result = await _ref.read(updateTaskUseCaseProvider).call(task);
     result.fold(
@@ -90,7 +92,6 @@ class TaskListNotifier extends StateNotifier<TaskListState> {
     );
   }
 
-  // BUG-02 FIX: error path now sets TaskListError instead of null
   Future<void> deleteTask(String id) async {
     final result = await _ref.read(deleteTaskUseCaseProvider).call(id);
     result.fold(
@@ -99,7 +100,6 @@ class TaskListNotifier extends StateNotifier<TaskListState> {
     );
   }
 
-  // BUG-03 FIX: result is now checked; error sets TaskListError instead of being swallowed
   Future<void> toggleCompletion(String id) async {
     final result = await _ref.read(toggleCompletionUseCaseProvider).call(id);
     result.fold(
@@ -108,6 +108,7 @@ class TaskListNotifier extends StateNotifier<TaskListState> {
     );
   }
 
+  /// Updates the filter chip selection. No-op when not in Loaded state.
   void setFilter(String? filter) {
     if (state is TaskListLoaded) {
       final s = state as TaskListLoaded;
@@ -115,7 +116,7 @@ class TaskListNotifier extends StateNotifier<TaskListState> {
     }
   }
 
-  // BUG-07 FIX: retry() method for error recovery triggered from the UI
+  /// Retry after an error — just triggers a fresh load.
   void retry() => load();
 }
 

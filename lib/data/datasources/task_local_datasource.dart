@@ -3,16 +3,16 @@ import 'package:isar/isar.dart';
 import '../models/task_model.dart';
 import 'isar_service.dart';
 
-/// Raw data source — speaks only in [TaskModel], knows nothing about domain.
+/// Direct Isar access layer. Works only with [TaskModel] — no domain types.
 class TaskLocalDataSource {
   Isar get _db => IsarService.instance;
 
-  /// Returns all flat models (no hierarchy assembled here).
+  /// Returns all rows flat (no tree structure).
   Future<List<TaskModel>> getAllModels() async {
     return _db.taskModels.where().findAll();
   }
 
-  /// Returns flat models for a given parentId (null = root).
+  /// Returns direct children of [parentId]. Pass null to get root tasks.
   Future<List<TaskModel>> getModelsByParentId(String? parentId) async {
     if (parentId == null) {
       return _db.taskModels
@@ -40,7 +40,7 @@ class TaskLocalDataSource {
     await _db.writeTxn(() => _db.taskModels.putAll(models));
   }
 
-  /// Cascade delete: deletes the task and all descendants recursively.
+  /// Collects all descendant IDs then deletes them in one transaction.
   Future<void> deleteWithChildren(String id) async {
     final allModels = await getAllModels();
     final toDelete = _collectIds(id, allModels);
@@ -51,10 +51,12 @@ class TaskLocalDataSource {
     });
   }
 
+  /// Wipes the entire tasks table (used before a backup restore).
   Future<void> deleteAll() async {
     await _db.writeTxn(() => _db.taskModels.clear());
   }
 
+  // Recursively collects [rootId] and all its descendants.
   Set<String> _collectIds(String rootId, List<TaskModel> all) {
     final ids = <String>{rootId};
     final children = all.where((m) => m.parentId == rootId);

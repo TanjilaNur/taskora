@@ -1,3 +1,4 @@
+/// Priority level of a task. Stored as int (0/1/2) in the database.
 enum TaskPriority {
   low,
   medium,
@@ -24,22 +25,34 @@ extension TaskPriorityExtension on TaskPriority {
   };
 }
 
-/// Pure domain entity — no Flutter, no Isar, no JSON annotations.
+/// Core task entity. Pure Dart — no Flutter, Isar, or JSON dependencies.
+///
+/// Tasks are stored flat in the DB (linked by [parentId]).
+/// The [subtasks] list is assembled in memory by the repository.
 class Task {
   final String id;
   final String title;
   final String? description;
   final bool isCompleted;
+
+  /// Used by the leaf-task slider (0–100). Ignored when subtasks exist.
   final double manualCompletionPercent;
+
+  /// null = root task. Set to parent's id for subtasks.
   final String? parentId;
-  final String? imagePath;
-  final String? imageUrl;
+
+  final String? imagePath; // local file path after compression
+  final String? imageUrl;  // original URL (kept for reference)
   final DateTime createdAt;
   final DateTime updatedAt;
-  final DateTime? completedAt;
+  final DateTime? completedAt; // stamped when task is marked done
   final DateTime? dueDate;
   final TaskPriority priority;
+
+  /// Children assembled in memory — not a DB column.
   final List<Task> subtasks;
+
+  /// 1 = root, 4 = deepest allowed level.
   final int depth;
 
   const Task({
@@ -60,28 +73,57 @@ class Task {
     this.depth = 1,
   });
 
+  /// Completion % calculated from ALL leaves across the entire subtree.
+  ///
+  /// Spec: "percentage reflects the proportion of completed subtasks
+  /// across all nesting levels."
+  ///
+  /// Every leaf (task with no children) contributes equally — regardless
+  /// of which branch it lives in. A branch with 4 leaves is 4× more
+  /// influential than a branch with 1 leaf.
+  ///
+  /// Leaf value:
+  ///   - completed           → 100%
+  ///   - not completed       → manualCompletionPercent (0–100 via slider)
   double get completionPercentage {
-    if (subtasks.isEmpty) {
+    final leaves = _collectLeaves();
+    if (leaves.isEmpty) {
+      // This node itself is a leaf
       return isCompleted ? 100.0 : manualCompletionPercent;
     }
-    double total = 0;
+    final total = leaves.fold(0.0, (sum, leaf) => sum + leaf);
+    return total / leaves.length;
+  }
+
+  /// Recursively collects the completion value of every leaf in the subtree.
+  List<double> _collectLeaves() {
+    if (subtasks.isEmpty) return []; // caller handles the leaf case
+    final result = <double>[];
     for (final sub in subtasks) {
-      total += sub.completionPercentage;
+      if (sub.subtasks.isEmpty) {
+        // Direct leaf — use its own value
+        result.add(sub.isCompleted ? 100.0 : sub.manualCompletionPercent);
+      } else {
+        // Intermediate node — recurse and collect its leaves
+        result.addAll(sub._collectLeaves());
+      }
     }
-    return total / subtasks.length;
+    return result;
   }
 
   bool get isFullyComplete => completionPercentage >= 100.0;
+
+  /// True if past due date and not yet completed.
   bool get isOverdue =>
       dueDate != null && !isCompleted && dueDate!.isBefore(DateTime.now());
 
-  int get completedSubtaskCount =>
-      subtasks.where((s) => s.isFullyComplete).length +
-          subtasks.fold(0, (sum, s) => sum + s.completedSubtaskCount);
+  /// Number of leaf tasks in this subtree that are fully complete.
+  int get completedSubtaskCount => _collectLeaves()
+      .where((v) => v >= 100.0)
+      .length;
 
-  int get totalSubtaskCount =>
-      subtasks.length +
-          subtasks.fold(0, (sum, s) => sum + s.totalSubtaskCount);
+  /// Total number of leaf tasks in this subtree.
+  int get totalSubtaskCount => _collectLeaves().length;
 
   Task copyWith({
     String? id,

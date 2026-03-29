@@ -4,9 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../presentation/pages/home/home_page.dart';
 
+/// App-wide router. Add new routes here as the app grows.
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/', // Start at home
     debugLogDiagnostics: false,
     routes: [
       GoRoute(

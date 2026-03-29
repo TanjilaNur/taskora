@@ -39,7 +39,7 @@ The app was built against a formal product specification and satisfies every cor
 | Bottom sheet modal with full CRUD | ✅ |
 | Independent navigation stack inside modal | ✅ |
 | Device back button handled inside modal | ✅ |
-| Hierarchical completion % (recursive) | ✅ |
+| Hierarchical completion % (leaf-based flat average) | ✅ |
 | Completion date displayed on completed tasks | ✅ |
 | Completing all subtasks auto-completes parent | ✅ |
 | Isar local database with indexed queries | ✅ |
@@ -71,18 +71,33 @@ The app was built against a formal product specification and satisfies every cor
 - Each level shows its own completion percentage and subtask count
 
 ### Completion System
+
+Every task's completion percentage is calculated from the **leaves of its entire subtree** — not a simple average of direct children.
+
 ```
-Root Task  ──── completionPercentage
-  │               = average of all direct subtask percentages (recursive)
-  ├─ Subtask A ── 100% (completed)
-  ├─ Subtask B ── 50%  (manual slider, no children)
-  └─ Subtask C ── completionPercentage
-       ├─ Sub C1 ── 100%
-       └─ Sub C2 ── 0%   → C = 50%, Root = (100 + 50 + 50) / 3 = 66%
+Root Task
+  ├─ L2-A  (leaf, slider = 0%)
+  └─ L2-B  (intermediate)
+       ├─ L3-1  (leaf, 100% ✓)
+       ├─ L3-2  (leaf, 100% ✓)
+       ├─ L3-3  (leaf, 50% slider)
+       └─ L3-4  (leaf, 0%)
+
+Leaves = [L2-A=0, L3-1=100, L3-2=100, L3-3=50, L3-4=0]
+Root %  = (0 + 100 + 100 + 50 + 0) / 5 = 50%
 ```
-- Completing all subtasks automatically marks the parent complete
-- Un-completing a subtask automatically reverts the parent
-- Leaf tasks (no subtasks) use a **slider** for partial completion (0–100%)
+
+**Rule:** collect every leaf (task with no children) across all nesting levels and average their values equally. A branch with 4 leaves contributes 4× as much as a branch with 1 leaf — matching the spec requirement *"proportion of completed subtasks across all nesting levels"*.
+
+**Leaf value:**
+- `isCompleted = true` → `100%`
+- `isCompleted = false` → `manualCompletionPercent` (0–100 via slider)
+
+**Cascading rules:**
+- Completing all leaves under a parent automatically marks that parent complete
+- Un-completing any leaf reverts the parent back to incomplete
+- Leaf tasks use a **slider** for partial completion (0–100%)
+- Intermediate tasks show *"X of Y subtasks completed"* (leaf counts)
 - Completed tasks display their exact completion date (`Completed Mar 29, 2026`)
 
 ### Images

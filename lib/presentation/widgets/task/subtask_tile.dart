@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 
+import '../../../core/constants/app_strings.dart';
 import '../../../domain/entities/task.dart';
 
 class SubtaskTile extends StatelessWidget {
@@ -97,8 +98,9 @@ class SubtaskTile extends StatelessWidget {
                   ],
                 ),
                 const Gap(4),
+                // Tap to expand hint
                 Text(
-                  '${subtask.subtasks.length} subtask${subtask.subtasks.length > 1 ? 's' : ''} · Tap to expand',
+                  '${subtask.subtasks.length} subtask${subtask.subtasks.length > 1 ? 's' : ''} · ${AppStrings.subtaskExpandHint.replaceFirst('subtasks · ', '')}',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

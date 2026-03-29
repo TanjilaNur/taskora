@@ -8,6 +8,7 @@ import 'package:gap/gap.dart';
 import 'package:intl/intl.dart';
 
 import '../../../domain/entities/task.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../state/task_detail_notifier.dart';
 import '../common/shimmer_list.dart';
 import 'task_form_sheet.dart';
@@ -84,7 +85,7 @@ class _TaskDetailPage extends ConsumerWidget {
               onPressed: () => Navigator.of(context).pop(),
             ),
             Text(
-              'Back',
+              AppStrings.btnBack,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -96,9 +97,8 @@ class _TaskDetailPage extends ConsumerWidget {
       body: switch (state) {
         TaskDetailLoading() => const ShimmerList(),
         TaskDetailError(:final message) => Center(child: Text(message)),
-        TaskDetailLoaded(:final task) => _TaskDetailContent(
-          task: task,
-          notifier: ref.read(taskDetailProvider(taskId).notifier),
+        TaskDetailLoaded() => _TaskDetailContent(
+          taskId: taskId,
           depth: depth,
         ),
       },
@@ -109,13 +109,23 @@ class _TaskDetailPage extends ConsumerWidget {
 // ─── Main content ─────────────────────────────────────────────────────────────
 
 class _TaskDetailContent extends ConsumerWidget {
-  final Task task;
-  final TaskDetailNotifier notifier;
+  final String taskId; // watch by ID, not by stale task prop
   final int depth;
-  const _TaskDetailContent({required this.task, required this.notifier, this.depth = 1});
+  const _TaskDetailContent({required this.taskId, this.depth = 1});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Always watch — so any mutation (delete, toggle, update) triggers a rebuild
+    final state    = ref.watch(taskDetailProvider(taskId));
+    final notifier = ref.read(taskDetailProvider(taskId).notifier);
+
+    // Still loading or errored after a mutation — show appropriate widget
+    if (state is TaskDetailLoading) return const ShimmerList();
+    if (state is TaskDetailError) {
+      return Center(child: Text(state.message));
+    }
+
+    final task = (state as TaskDetailLoaded).task;
     return Column(
       children: [
         Expanded(
@@ -191,16 +201,21 @@ class _TaskDetailContent extends ConsumerWidget {
                       final sub = task.subtasks[i];
                       return _SubtaskRow(
                         subtask: sub,
-                        onTap: () => Navigator.of(ctx).push(
-                          MaterialPageRoute(
-                            builder: (_) => _TaskDetailPage(
-                              taskId: sub.id,
-                              depth: depth + 1,
+                        onTap: () async {
+                          await Navigator.of(ctx).push(
+                            MaterialPageRoute(
+                              builder: (_) => _TaskDetailPage(
+                                taskId: sub.id,
+                                depth: depth + 1,
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                          // Reload after returning from child so parent
+                          // completion % reflects any changes made there
+                          notifier.load();
+                        },
                         onToggle: () => notifier.toggleCompletion(sub.id),
-                        onDelete: () => _confirmDelete(context, sub),
+                        onDelete: () => _confirmDelete(context, sub, notifier),
                       )
                           .animate(delay: (i * 40).ms)
                           .fadeIn(duration: 250.ms)
@@ -212,10 +227,10 @@ class _TaskDetailContent extends ConsumerWidget {
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                   sliver: SliverToBoxAdapter(
-                    child: Text(
+                      child: Text(
                       task.depth < 4
-                          ? 'No subtasks yet. Tap Add to create one.'
-                          : 'No subtasks.',
+                          ? AppStrings.noSubtasksYet
+                          : AppStrings.noSubtasksMaxDepth,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context)
                             .colorScheme
@@ -236,23 +251,22 @@ class _TaskDetailContent extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, Task sub) {
+  void _confirmDelete(BuildContext context, Task sub, TaskDetailNotifier notifier) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Subtask?'),
-        content:
-        Text('"${sub.title}" and all its subtasks will be deleted.'),
+        title: const Text(AppStrings.deleteSubtaskTitle),
+        content: Text('"${sub.title}${AppStrings.deleteSubtaskSuffix}'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+              child: const Text(AppStrings.btnCancel)),
           FilledButton.tonal(
             onPressed: () {
               Navigator.pop(ctx);
               notifier.deleteSubtask(sub.id);
             },
-            child: const Text('Delete'),
+            child: const Text(AppStrings.btnDelete),
           ),
         ],
       ),
@@ -326,10 +340,19 @@ class _CompletionCard extends StatelessWidget {
   final TaskDetailNotifier notifier;
   const _CompletionCard({required this.task, required this.notifier});
 
+  // Same colour logic as TaskCard on the home page
+  Color _progressColor(double pct, ThemeData theme) {
+    if (task.isOverdue) return theme.colorScheme.error;
+    if (pct >= 1.0) return const Color(0xFF00C896); // green
+    if (pct >= 0.5) return const Color(0xFFFF9F43); // orange
+    return const Color(0xFF6C63FF);                  // primary
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final pct = task.completionPercentage / 100;
+    final theme  = Theme.of(context);
+    final pct    = (task.completionPercentage / 100).clamp(0.0, 1.0);
+    final color  = _progressColor(pct, theme);
     final isDark = theme.brightness == Brightness.dark;
     final bgColor = isDark
         ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55)
@@ -347,7 +370,7 @@ class _CompletionCard extends StatelessWidget {
         children: [
           // Label
           Text(
-            'COMPLETION STATUS',
+            AppStrings.completionStatusLabel,
             style: theme.textTheme.labelSmall?.copyWith(
               letterSpacing: 1.3,
               fontWeight: FontWeight.w700,
@@ -356,51 +379,49 @@ class _CompletionCard extends StatelessWidget {
           ),
           const Gap(4),
 
-          // Percentage
+          // Percentage — same colour as the progress bar
           Text(
             '${task.completionPercentage.round()}%',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF3D6FFF),
+              color: color,
             ),
           ),
           const Gap(8),
 
-          // Progress bar — green as in mockup
+          // Progress bar — dynamic colour matching home page
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
-              value: pct.clamp(0.0, 1.0),
+              value: pct,
               minHeight: 7,
-              backgroundColor: Colors.green.withValues(alpha: 0.15),
-              valueColor:
-              const AlwaysStoppedAnimation<Color>(Colors.green),
+              backgroundColor: color.withValues(alpha: 0.12),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
           const Gap(8),
 
-          // Subtask count
+          // If the task has subtasks: show how many are done.
+          // If it has NO subtasks: show the manual slider so the user
+          // can drag to set partial completion themselves.
           if (task.subtasks.isNotEmpty)
             Text(
-              '${task.completedSubtaskCount} of ${task.totalSubtaskCount} subtasks completed',
+              '${task.completedSubtaskCount}${AppStrings.subtaskOf}${task.totalSubtaskCount} subtasks${AppStrings.subtaskCompletedSuffix}',
               style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant),
-            ),
-
-          // Leaf slider (bonus)
-          if (task.subtasks.isEmpty) ...[
+            )
+          else ...[
             Slider(
               value: task.manualCompletionPercent,
               min: 0,
               max: 100,
               divisions: 20,
-              activeColor: const Color(0xFF3D6FFF),
+              activeColor: color,
               label: '${task.manualCompletionPercent.round()}%',
-              onChanged: (v) =>
-                  notifier.updateCompletionPercent(task.id, v),
+              onChanged: (v) => notifier.updateCompletionPercent(task.id, v),
             ),
             Text(
-              'Drag to set partial completion',
+              AppStrings.dragToSetCompletion,
               style: theme.textTheme.labelSmall
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
@@ -410,12 +431,11 @@ class _CompletionCard extends StatelessWidget {
           if (task.completedAt != null) ...[
             const Gap(6),
             Row(children: [
-              Icon(Icons.check_circle, size: 13, color: Colors.green.shade600),
+              Icon(Icons.check_circle, size: 13, color: color),
               const Gap(4),
               Text(
-                'Completed ${DateFormat('MMM d, yyyy').format(task.completedAt!)}',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: Colors.green.shade600),
+                '${AppStrings.metaCompleted}${DateFormat('MMM d, yyyy').format(task.completedAt!)}',
+                style: theme.textTheme.labelSmall?.copyWith(color: color),
               ),
             ]),
           ],
@@ -449,14 +469,14 @@ class _MetaCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _metaRow('📅', 'Created: ${DateFormat('MMM d, yyyy').format(task.createdAt)}', theme),
+          _metaRow('📅', '${AppStrings.metaCreated}${DateFormat('MMM d, yyyy').format(task.createdAt)}', theme),
           const Gap(5),
-          _metaRow('✏️', 'Modified: ${DateFormat('MMM d, yyyy').format(task.updatedAt)}', theme),
+          _metaRow('✏️', '${AppStrings.metaModified}${DateFormat('MMM d, yyyy').format(task.updatedAt)}', theme),
           if (task.dueDate != null) ...[
             const Gap(5),
             _metaRow(
               task.isOverdue ? '🔴' : '🗓️',
-              'Due: ${DateFormat('MMM d, yyyy').format(task.dueDate!)}${task.isOverdue ? ' · Overdue' : ''}',
+              '${AppStrings.metaDue}${DateFormat('MMM d, yyyy').format(task.dueDate!)}${task.isOverdue ? AppStrings.metaOverdue : ''}',
               theme,
               color: task.isOverdue ? theme.colorScheme.error : null,
             ),
@@ -497,7 +517,7 @@ class _SubtasksHeader extends StatelessWidget {
     return Row(
       children: [
         Text(
-          'SUBTASKS (${task.subtasks.length})',
+          '${AppStrings.subtasksHeader} (${task.subtasks.length})',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             letterSpacing: 1.3,
             fontWeight: FontWeight.w700,
@@ -508,7 +528,7 @@ class _SubtasksHeader extends StatelessWidget {
         if (task.depth < 4)
           TextButton.icon(
             icon: const Icon(Icons.add_circle_outline, size: 16),
-            label: const Text('Add'),
+            label: const Text(AppStrings.btnAdd),
             onPressed: () => _showAddSubtask(context),
           ),
       ],
@@ -520,7 +540,7 @@ class _SubtasksHeader extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       builder: (_) => TaskFormSheet(
-        title: 'Add Subtask',
+        title: AppStrings.addSubtaskTitle,
         onSubmit: (title, desc, imagePath, imageUrl, dueDate, priority) =>
             notifier.addSubtask(
           title,
@@ -617,10 +637,10 @@ class _SubtaskRow extends StatelessWidget {
                   const Gap(2),
                   Text(
                     completed
-                        ? 'Completed'
+                        ? AppStrings.subtaskCompleted
                         : subtask.subtasks.isEmpty
-                        ? '${subtask.manualCompletionPercent.round()}% complete'
-                        : '$completedCount of $totalCount completed',
+                        ? '${subtask.completionPercentage.round()}${AppStrings.subtaskPercentSuffix}'
+                        : '$completedCount${AppStrings.subtaskOf}$totalCount${AppStrings.subtaskCompletedSuffix}',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: completed
                           ? Colors.green.shade600
@@ -683,7 +703,7 @@ class _BottomActionBar extends StatelessWidget {
         children: [
           Expanded(
             child: _Btn(
-              label: '✏️  Edit',
+              label: AppStrings.btnEdit,
               color: const Color(0xFF3D6FFF),
               onTap: () => _showEdit(context),
             ),
@@ -691,7 +711,7 @@ class _BottomActionBar extends StatelessWidget {
           const Gap(8),
           Expanded(
             child: _Btn(
-              label: task.isCompleted ? '↩  Undo' : '✓  Complete',
+              label: task.isCompleted ? AppStrings.btnUndo : AppStrings.btnComplete,
               color: Colors.green.shade600,
               onTap: () => notifier.toggleCompletion(task.id),
             ),
@@ -699,7 +719,7 @@ class _BottomActionBar extends StatelessWidget {
           const Gap(8),
           Expanded(
             child: _Btn(
-              label: '🗑  Delete',
+              label: AppStrings.btnDelete,
               color: Colors.red.shade500,
               onTap: () => _confirmDelete(context),
             ),
@@ -714,7 +734,7 @@ class _BottomActionBar extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       builder: (_) => TaskFormSheet(
-        title: 'Edit Task',
+        title: AppStrings.editTaskTitle,
         initialTitle: task.title,
         initialDescription: task.description,
         initialImagePath: task.imagePath,
@@ -738,26 +758,27 @@ class _BottomActionBar extends StatelessWidget {
   }
 
   void _confirmDelete(BuildContext context) {
+    final sheetNavigator = Navigator.of(context);
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Task?'),
-        content: Text(
-            '"${task.title}" and all its subtasks will be permanently deleted.'),
+        title: const Text(AppStrings.deleteTaskTitle),
+        content: Text('"${task.title}${AppStrings.deleteTaskSuffix}'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+              child: const Text(AppStrings.btnCancel)),
           FilledButton.tonal(
             style: FilledButton.styleFrom(
-                backgroundColor:
-                Theme.of(ctx).colorScheme.errorContainer),
-            onPressed: () {
-              Navigator.pop(ctx);         // close dialog
-              Navigator.of(context).pop(); // close detail sheet / go back
-              notifier.deleteSubtask(task.id);
+                backgroundColor: Theme.of(ctx).colorScheme.errorContainer),
+            onPressed: () async {
+              Navigator.pop(ctx);   // close dialog
+              sheetNavigator.pop(); // close sheet — widget gone before delete
+              // Delete without calling load() — the sheet is already dismissed
+              await notifier.deleteWithoutReload(task.id);
             },
-            child: const Text('Delete'),
+            child: const Text(AppStrings.btnDelete),
           ),
         ],
       ),

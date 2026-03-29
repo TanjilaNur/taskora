@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
+import '../../../core/constants/app_strings.dart';
 import '../../../domain/entities/task.dart';
 
 class TaskFormSheet extends StatefulWidget {
@@ -122,7 +123,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                     const Gap(20),
 
                     // ── Image Upload ──────────────────────────────
-                    _buildSectionLabel(context, '📷 Upload Thumbnail (250×250px)'),
+                    _buildSectionLabel(context, AppStrings.labelThumbnail),
                     const Gap(8),
                     _ImagePickerArea(
                       imagePath: _imagePath,
@@ -138,7 +139,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                     const Gap(12),
 
                     // ── Image URL ─────────────────────────────────
-                    _buildSectionLabel(context, '🔗 Or paste an image URL'),
+                    _buildSectionLabel(context, AppStrings.labelImageUrl),
                     const Gap(8),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,7 +149,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                             controller: _urlCtrl,
                             keyboardType: TextInputType.url,
                             decoration: InputDecoration(
-                              hintText: 'https://example.com/image.jpg',
+                              hintText: AppStrings.hintImageUrl,
                               suffixIcon: _urlCtrl.text.isNotEmpty
                                   ? IconButton(
                                       icon: const Icon(Icons.clear, size: 18),
@@ -178,7 +179,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                                   onPressed: _urlCtrl.text.trim().isEmpty
                                       ? null
                                       : _applyUrl,
-                                  child: const Text('Use'),
+                                  child: const Text(AppStrings.btnUse),
                                 ),
                         ),
                       ],
@@ -204,27 +205,27 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                     const Gap(20),
 
                     // ── Title ─────────────────────────────────────
-                    _buildSectionLabel(context, '📝 Task Title *'),
+                    _buildSectionLabel(context, AppStrings.labelTaskTitle),
                     const Gap(8),
                     TextFormField(
                       controller: _titleCtrl,
                       autofocus: widget.initialTitle == null,
-                      decoration: const InputDecoration(hintText: 'Enter task title'),
+                      decoration: const InputDecoration(hintText: AppStrings.hintTaskTitle),
                       validator: (v) => v == null || v.trim().isEmpty
-                          ? 'Title is required'
+                          ? AppStrings.validationTitleEmpty
                           : null,
                       textCapitalization: TextCapitalization.sentences,
                     ),
                     const Gap(16),
 
                     // ── Description ───────────────────────────────
-                    _buildSectionLabel(context, '📄 Description'),
+                    _buildSectionLabel(context, AppStrings.labelDescription),
                     const Gap(8),
                     TextFormField(
                       controller: _descCtrl,
                       maxLines: 3,
                       decoration: const InputDecoration(
-                        hintText: 'Add a description (optional)',
+                        hintText: AppStrings.hintDescription,
                         alignLabelWithHint: true,
                       ),
                       textCapitalization: TextCapitalization.sentences,
@@ -232,7 +233,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                     const Gap(16),
 
                     // ── Due Date ──────────────────────────────────
-                    _buildSectionLabel(context, '📅 Due Date (Optional)'),
+                    _buildSectionLabel(context, AppStrings.labelDueDate),
                     const Gap(8),
                     _DueDatePicker(
                       dueDate: _dueDate,
@@ -241,7 +242,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                     const Gap(16),
 
                     // ── Priority ──────────────────────────────────
-                    _buildSectionLabel(context, '🎯 Priority'),
+                    _buildSectionLabel(context, AppStrings.labelPriority),
                     const Gap(8),
                     _PrioritySelector(
                       selected: _priority,
@@ -255,7 +256,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
+                            child: const Text(AppStrings.btnCancel),
                           ),
                         ),
                         const Gap(12),
@@ -267,8 +268,8 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
                               padding: const EdgeInsets.symmetric(vertical: 4),
                               child: Text(
                                 widget.initialTitle != null
-                                    ? 'Save Changes'
-                                    : 'Save Task',
+                                    ? AppStrings.btnSaveChanges
+                                    : AppStrings.btnSaveTask,
                                 style: const TextStyle(fontSize: 16),
                               ),
                             ),
@@ -337,7 +338,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
     if (uri == null || !uri.hasScheme) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid URL')),
+          const SnackBar(content: Text(AppStrings.imageUrlInvalid)),
         );
       }
       return;
@@ -360,7 +361,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Image URL set — will be downloaded on save'),
+              content: Text(AppStrings.imageUrlSetting),
             ),
           );
         }
@@ -368,7 +369,7 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('URL not reachable (${resp.statusCode})'),
+              content: Text('${AppStrings.imageUrlUnreachable}${resp.statusCode})'),
             ),
           );
         }
@@ -382,8 +383,8 @@ class _TaskFormSheetState extends State<TaskFormSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('URL saved (could not verify — will try on save)'),
-          ),
+              content: Text(AppStrings.imageUrlSaved),
+            ),
         );
       }
     } finally {
@@ -498,7 +499,7 @@ class _ImagePickerArea extends StatelessWidget {
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text('Change',
+                            child: const Text(AppStrings.btnChange,
                                 style: TextStyle(
                                     color: Colors.white, fontSize: 11)),
                           ),
@@ -512,8 +513,8 @@ class _ImagePickerArea extends StatelessWidget {
                       Icon(Icons.camera_alt_outlined,
                           size: 36, color: theme.colorScheme.onSurfaceVariant),
                       const Gap(8),
-                      Text(
-                        'Tap to select or take a photo',
+                        Text(
+                        AppStrings.tapToSelect,
                         style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant),
                       ),
@@ -532,7 +533,7 @@ class _ImagePickerArea extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from Gallery'),
+              title: const Text(AppStrings.imagePickGallery),
               onTap: () {
                 Navigator.pop(context);
                 onPick(fromCamera: false);
@@ -540,7 +541,7 @@ class _ImagePickerArea extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Take a Photo'),
+              title: const Text(AppStrings.imagePickCamera),
               onTap: () {
                 Navigator.pop(context);
                 onPick(fromCamera: true);
@@ -586,9 +587,9 @@ class _DueDatePicker extends StatelessWidget {
             const Gap(10),
             Expanded(
               child: Text(
-                dueDate != null
-                    ? DateFormat('MMM d, yyyy').format(dueDate!)
-                    : 'Select a due date',
+                  dueDate != null
+                      ? DateFormat('MMM d, yyyy').format(dueDate!)
+                      : AppStrings.hintDueDate,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: dueDate != null
                       ? theme.colorScheme.onSurface

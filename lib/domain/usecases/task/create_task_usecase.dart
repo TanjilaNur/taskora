@@ -3,6 +3,7 @@ import '../../repositories/task_manager_repository.dart';
 import '../../../core/utils/result.dart';
 import '../../../core/errors/failures.dart';
 
+/// Input data for creating a task. Depth defaults to 1 (root level).
 class CreateTaskParams {
   final String title;
   final String? description;
@@ -25,21 +26,24 @@ class CreateTaskParams {
   });
 }
 
+/// Validates input then delegates to the repository to persist the task.
 class CreateTaskUseCase {
   final TaskRepository _repository;
   const CreateTaskUseCase(this._repository);
 
   Future<Result<Task>> call(CreateTaskParams params) async {
+    // Guard: title must not be blank
     if (params.title.trim().isEmpty) {
       return Err(Exception(const ValidationFailure('Title cannot be empty').message));
     }
+    // Guard: respect the max nesting depth
     if (params.depth > 4) {
       return Err(Exception(const ValidationFailure('Maximum nesting depth of 4 reached').message));
     }
 
-    final now = DateTime.now();
+    final now  = DateTime.now();
     final task = Task(
-      id: '',
+      id: '',   // repository assigns the real UUID
       title: params.title.trim(),
       description: params.description?.trim(),
       parentId: params.parentId,

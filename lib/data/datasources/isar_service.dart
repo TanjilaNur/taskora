@@ -1,6 +1,7 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../models/task_model.dart';
 
 /// Singleton wrapper around the Isar instance.
@@ -17,7 +18,7 @@ class IsarService {
     _isar = await Isar.open(
       [TaskModelSchema],
       directory: dir.path,
-      name: 'taskflow_db',
+      name: AppConstants.dbName,
     );
   }
 }

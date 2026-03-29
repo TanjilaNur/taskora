@@ -16,16 +16,19 @@ import '../../domain/usecases/task/update_task_usecase.dart';
 
 // ─── Infrastructure ───────────────────────────────────────────────────────────
 
+/// Provides the raw Isar data source (one instance shared app-wide).
 final taskLocalDataSourceProvider = Provider<TaskLocalDataSource>(
       (ref) => TaskLocalDataSource(),
 );
 
+/// Provides the image service (handles pick, compress, save, download).
 final imageServiceProvider = Provider<ImageService>(
       (ref) => ImageService(picker: ImagePicker(), uuid: const Uuid()),
 );
 
 // ─── Repository ───────────────────────────────────────────────────────────────
 
+/// The single repository instance — wires data source into the domain contract.
 final taskRepositoryProvider = Provider<TaskRepository>(
       (ref) => TaskManagerRepositoryImpl(
     dataSource: ref.watch(taskLocalDataSourceProvider),
@@ -33,7 +36,8 @@ final taskRepositoryProvider = Provider<TaskRepository>(
   ),
 );
 
-// ─── Use Cases ────────────────────────────────────────────────────────────────
+// ─── Use cases ────────────────────────────────────────────────────────────────
+// Each provider injects the repository into its use case.
 
 final getRootTasksUseCaseProvider = Provider(
       (ref) => GetRootTasksUseCase(ref.watch(taskRepositoryProvider)),

@@ -9,8 +9,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../domain/entities/task.dart';
 import '../../../domain/usecases/task/create_task_usecase.dart';
 import '../../state/task_list_notifier.dart';
@@ -33,84 +35,149 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(taskListProvider);
+    final state  = ref.watch(taskListProvider);
+    final theme  = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'TaskFlow',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 26),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.dark_mode_outlined),
-            tooltip: 'Toggle theme',
-            onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: _handleMenuAction,
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(
-                value: 'export',
-                child: ListTile(
-                  leading: Icon(Icons.upload_file),
-                  title: Text('Export Backup'),
-                  contentPadding: EdgeInsets.zero,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: CustomScrollView(
+        slivers: [
+          // ── Gradient header SliverAppBar ──────────────────────────────────
+          SliverAppBar(
+            expandedHeight: 130,
+            floating: false,
+            pinned: true,
+            snap: false,
+            backgroundColor: theme.scaffoldBackgroundColor,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.pin,
+              background: _HeaderBanner(state: state, isDark: isDark),
+            ),
+            actions: [
+              // Theme toggle
+              Container(
+                margin: const EdgeInsets.only(right: 4),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                    size: 20,
+                  ),
+                  tooltip: AppStrings.toggleTheme,
+                  onPressed: () =>
+                      ref.read(themeModeProvider.notifier).toggle(),
                 ),
               ),
-              const PopupMenuItem(
-                value: 'import',
-                child: ListTile(
-                  leading: Icon(Icons.download),
-                  title: Text('Import Backup'),
-                  contentPadding: EdgeInsets.zero,
+              // Backup menu
+              Container(
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz_rounded, size: 20),
+                  offset: const Offset(0, 44),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  onSelected: _handleMenuAction,
+                  itemBuilder: (ctx) => [
+                    _menuItem('export', Icons.upload_rounded,
+                        AppStrings.exportBackup),
+                    _menuItem('import', Icons.download_rounded,
+                        AppStrings.importBackup),
+                  ],
                 ),
               ),
             ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _FilterBar(
-            activeFilter: _activeFilter,
-            onFilterChanged: (f) {
-              setState(() => _activeFilter = f);
-              ref.read(taskListProvider.notifier).setFilter(f);
-            },
+
+          // ── Filter bar ────────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: _FilterBar(
+              activeFilter: _activeFilter,
+              state: state,
+              onFilterChanged: (f) {
+                setState(() => _activeFilter = f);
+                ref.read(taskListProvider.notifier).setFilter(f);
+              },
+            ),
           ),
-          Expanded(
-            child: switch (state) {
-              TaskListLoading() => const ShimmerList(),
-              TaskListError(:final message) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48),
-                    const Gap(12),
-                    Text(message),
-                    const Gap(12),
-                    ElevatedButton(
-                      onPressed: () =>
-                          ref.read(taskListProvider.notifier).load(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
+
+          // ── Body ──────────────────────────────────────────────────────────
+          switch (state) {
+            TaskListLoading() =>
+              const SliverFillRemaining(child: ShimmerList()),
+            TaskListError(:final message) => SliverFillRemaining(
+                child: _ErrorView(
+                  message: message,
+                  onRetry: () => ref.read(taskListProvider.notifier).retry(),
                 ),
               ),
-              TaskListLoaded(:final filteredTasks) => filteredTasks.isEmpty
-                  ? const EmptyState()
-                  : _TaskList(tasks: filteredTasks),
-            },
-          ),
+            TaskListLoaded(:final filteredTasks, :final filter) =>
+              filteredTasks.isEmpty
+                  ? SliverFillRemaining(
+                      child: filter == null
+                          ? const EmptyState()
+                          : _FilterEmptyState(filter: filter),
+                    )
+                  : SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+                      sliver: SliverList.builder(
+                        itemCount: filteredTasks.length,
+                        itemBuilder: (ctx, i) {
+                          final task = filteredTasks[i];
+                          return TaskCard(
+                            task: task,
+                            onTap: () => _openDetail(context, ref, task),
+                            onToggle: () => ref
+                                .read(taskListProvider.notifier)
+                                .toggleCompletion(task.id),
+                            onDelete: () =>
+                                _confirmDelete(context, ref, task),
+                          )
+                              .animate(delay: (i * 40).ms)
+                              .fadeIn(duration: 280.ms)
+                              .slideX(begin: 0.04, curve: Curves.easeOut);
+                        },
+                      ),
+                    ),
+          },
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateSheet,
-        icon: const Icon(Icons.add),
-        label: const Text('New Task'),
-      ).animate().slideY(begin: 2, duration: 400.ms, curve: Curves.easeOutBack),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          AppStrings.newTask,
+          style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2),
+        ),
+        elevation: 6,
+      )
+          .animate()
+          .slideY(begin: 2, duration: 450.ms, curve: Curves.easeOutBack)
+          .fadeIn(duration: 300.ms),
+    );
+  }
+
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(children: [
+        Icon(icon, size: 18),
+        const Gap(10),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+      ]),
     );
   }
 
@@ -120,42 +187,41 @@ class _HomePageState extends ConsumerState<HomePage> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (ctx) => TaskFormSheet(
-        title: '✨ Create New Todo',
-        onSubmit: (title, description, imagePath, imageUrl, dueDate, priority) {
+        title: AppStrings.createTaskTitle,
+        onSubmit: (title, desc, imagePath, imageUrl, dueDate, priority) {
           ref.read(taskListProvider.notifier).createTask(
-            CreateTaskParams(
-              title: title,
-              description: description,
-              imagePath: imagePath,
-              imageUrl: imageUrl,
-              dueDate: dueDate,
-              priority: priority,
-            ),
-          );
+                CreateTaskParams(
+                  title: title,
+                  description: desc,
+                  imagePath: imagePath,
+                  imageUrl: imageUrl,
+                  dueDate: dueDate,
+                  priority: priority,
+                ),
+              );
         },
       ),
     );
   }
 
   Future<void> _handleMenuAction(String action) async {
-    if (action == 'export') {
-      await _exportBackup();
-    } else if (action == 'import') {
-      await _importBackup();
-    }
+    if (action == 'export') await _exportBackup();
+    if (action == 'import') await _importBackup();
   }
 
   Future<void> _exportBackup() async {
     final result = await ref.read(exportBackupUseCaseProvider).call();
     result.fold(
       ok: (bytes) async {
-        final dir = await getTemporaryDirectory();
+        final dir  = await getTemporaryDirectory();
         final file = File(
-            '${dir.path}/taskflow_backup${AppConstants.backupFileExtension}');
+            '${dir.path}/${AppStrings.appName.toLowerCase()}_backup'
+            '${AppConstants.backupFileExtension}');
         await file.writeAsBytes(bytes);
-        await Share.shareXFiles([XFile(file.path)], subject: 'TaskFlow Backup');
+        await Share.shareXFiles([XFile(file.path)],
+            subject: '${AppStrings.appName} Backup');
       },
-      err: (e) => _showSnack('Export failed: $e'),
+      err: (e) => _showSnack('${AppStrings.exportFailed}$e'),
     );
   }
 
@@ -169,63 +235,28 @@ class _HomePageState extends ConsumerState<HomePage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Restore Backup?'),
-        content:
-        const Text('This will replace ALL current tasks. Are you sure?'),
+        title: const Text(AppStrings.restoreBackupTitle),
+        content: const Text(AppStrings.restoreBackupContent),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: const Text(AppStrings.btnCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Restore')),
+              child: const Text(AppStrings.btnRestore)),
         ],
       ),
     );
     if (ok != true) return;
 
     final result =
-    await ref.read(importBackupUseCaseProvider).call(bytes.toList());
+        await ref.read(importBackupUseCaseProvider).call(bytes.toList());
     result.fold(
       ok: (_) {
         ref.read(taskListProvider.notifier).load();
-        _showSnack('Backup restored successfully!');
+        _showSnack(AppStrings.restoreSuccess);
       },
-      err: (e) => _showSnack('Import failed: $e'),
-    );
-  }
-
-  void _showSnack(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
-  }
-}
-
-// ─── Task List ────────────────────────────────────────────────────────────────
-
-class _TaskList extends ConsumerWidget {
-  final List<Task> tasks;
-  const _TaskList({required this.tasks});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      itemCount: tasks.length,
-      itemBuilder: (ctx, i) {
-        final task = tasks[i];
-        return TaskCard(
-          task: task,
-          onTap: () => _openDetail(context, ref, task),
-          onToggle: () =>
-              ref.read(taskListProvider.notifier).toggleCompletion(task.id),
-          onDelete: () => _confirmDelete(context, ref, task),
-        )
-            .animate(delay: (i * 50).ms)
-            .fadeIn(duration: 300.ms)
-            .slideX(begin: 0.05);
-      },
+      err: (e) => _showSnack('${AppStrings.importFailed}$e'),
     );
   }
 
@@ -243,18 +274,19 @@ class _TaskList extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Task?'),
+        title: const Text(AppStrings.deleteTaskTitle),
         content: Text(
-            '"${task.title}" and all its subtasks will be permanently deleted.'),
+            '"${task.title}${AppStrings.deleteTaskSuffix}'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: const Text(AppStrings.btnCancel)),
           FilledButton.tonal(
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.errorContainer),
+                backgroundColor:
+                    Theme.of(context).colorScheme.errorContainer),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: const Text(AppStrings.btnDelete),
           ),
         ],
       ),
@@ -263,38 +295,330 @@ class _TaskList extends ConsumerWidget {
       ref.read(taskListProvider.notifier).deleteTask(task.id);
     }
   }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
 }
+
+// ─── Header Banner ────────────────────────────────────────────────────────────
+
+class _HeaderBanner extends StatelessWidget {
+  final TaskListState state;
+  final bool isDark;
+  const _HeaderBanner({required this.state, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final total  = state is TaskListLoaded
+        ? (state as TaskListLoaded).tasks.length : 0;
+    final done   = state is TaskListLoaded
+        ? (state as TaskListLoaded).tasks.where((t) => t.isCompleted).length : 0;
+    final active = total - done;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF1C1B2E), const Color(0xFF252438)]
+              : [const Color(0xFFF5F4FF), const Color(0xFFEEECFF)],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // ── Title ──────────────────────────────────────────────────────
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: AppStrings.appName,
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.8,
+                    color: isDark
+                        ? const Color(0xFFE8E6FF)
+                        : const Color(0xFF1C1B2E),
+                  ),
+                ),
+                TextSpan(
+                  text: ' ✦',
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: 18,
+                    color: AppTheme.primaryColor.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Gap(5),
+          Text(
+            total == 0
+                ? AppStrings.appTagline
+                : '$active ${AppStrings.filterActive.toLowerCase()} · $done ${AppStrings.filterDone.toLowerCase()}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isDark
+                  ? const Color(0xFFABA9C3)
+                  : const Color(0xFF7B7A8F),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 // ─── Filter Bar ───────────────────────────────────────────────────────────────
 
 class _FilterBar extends StatelessWidget {
   final String? activeFilter;
+  final TaskListState state;
   final ValueChanged<String?> onFilterChanged;
 
-  const _FilterBar(
-      {required this.activeFilter, required this.onFilterChanged});
+  const _FilterBar({
+    required this.activeFilter,
+    required this.state,
+    required this.onFilterChanged,
+  });
+
+  int _count(String? filter) {
+    if (state is! TaskListLoaded) return 0;
+    final tasks = (state as TaskListLoaded).tasks;
+    return switch (filter) {
+      'active'    => tasks.where((t) => !t.isCompleted).length,
+      'completed' => tasks.where((t) => t.isCompleted).length,
+      _           => tasks.length,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
         children: [
-          _chip('All', null),
+          _FilterChip(
+            label: AppStrings.filterAll,
+            count: _count(null),
+            selected: activeFilter == null,
+            onTap: () => onFilterChanged(null),
+            theme: theme,
+          ),
           const Gap(8),
-          _chip('Active', 'active'),
+          _FilterChip(
+            label: AppStrings.filterActive,
+            count: _count('active'),
+            selected: activeFilter == 'active',
+            onTap: () => onFilterChanged('active'),
+            theme: theme,
+            activeColor: AppTheme.primaryColor,
+          ),
           const Gap(8),
-          _chip('Done', 'completed'),
+          _FilterChip(
+            label: AppStrings.filterDone,
+            count: _count('completed'),
+            selected: activeFilter == 'completed',
+            onTap: () => onFilterChanged('completed'),
+            theme: theme,
+            activeColor: AppTheme.successGreen,
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _chip(String label, String? filter) {
-    return FilterChip(
-      label: Text(label),
-      selected: activeFilter == filter,
-      onSelected: (_) => onFilterChanged(filter),
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+  final ThemeData theme;
+  final Color? activeColor;
+
+  const _FilterChip({
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+    required this.theme,
+    this.activeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color  = activeColor ?? AppTheme.primaryColor;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected
+              ? color
+              : (isDark ? const Color(0xFF252438) : const Color(0xFFF0EFFE)),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: selected
+              ? [BoxShadow(
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3))]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: selected
+                    ? Colors.white
+                    : theme.colorScheme.onSurfaceVariant,
+                letterSpacing: 0.1,
+              ),
+            ),
+            if (count > 0) ...[
+              const Gap(6),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? Colors.white.withValues(alpha: 0.25)
+                      : color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? Colors.white : color,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
+
+// ─── Filter Empty State ───────────────────────────────────────────────────────
+
+class _FilterEmptyState extends StatelessWidget {
+  final String filter;
+  const _FilterEmptyState({required this.filter});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme    = Theme.of(context);
+    final isDark   = theme.brightness == Brightness.dark;
+    final isActive = filter == 'active';
+    final icon     = isActive
+        ? Icons.radio_button_unchecked_rounded
+        : Icons.check_circle_outline_rounded;
+    final color    = isActive ? AppTheme.primaryColor : AppTheme.successGreen;
+    final title    = isActive
+        ? AppStrings.noActiveTasks
+        : AppStrings.noCompletedTasks;
+    final subtitle = isActive
+        ? AppStrings.noActiveSubtitle
+        : AppStrings.noCompletedSubtitle;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: isDark ? 0.15 : 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 44, color: color),
+            ),
+            const Gap(24),
+            Text(title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+            const Gap(10),
+            Text(subtitle,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant, height: 1.55)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Error View ───────────────────────────────────────────────────────────────
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.wifi_off_rounded,
+                  size: 36, color: theme.colorScheme.error),
+            ),
+            const Gap(20),
+            Text(AppStrings.errorTitle,
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const Gap(8),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant)),
+            const Gap(20),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text(AppStrings.errorRetry),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

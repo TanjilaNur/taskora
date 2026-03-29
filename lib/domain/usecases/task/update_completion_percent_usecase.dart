@@ -2,6 +2,7 @@ import '../../entities/task.dart';
 import '../../repositories/task_manager_repository.dart';
 import '../../../core/utils/result.dart';
 
+/// Updates the manual completion % on a leaf task. Clamps value to 0–100.
 class UpdateCompletionPercentUseCase {
   final TaskRepository _repository;
   const UpdateCompletionPercentUseCase(this._repository);

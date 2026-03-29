@@ -2,9 +2,11 @@ import 'package:isar/isar.dart';
 
 part 'task_model.g.dart';
 
+/// Isar DB model for a task. Stored flat — one row per task.
+/// [parentId] links subtasks to their parent; null = root task.
 @Collection()
 class TaskModel {
-  Id get isarId => fastHash(id);
+  Id get isarId => fastHash(id); // Isar requires an int ID — derived from uuid
 
   @Index(unique: true)
   late String id;
@@ -14,7 +16,7 @@ class TaskModel {
   late bool isCompleted;
   late double manualCompletionPercent;
 
-  @Index()
+  @Index() // indexed for fast parent→children queries
   String? parentId;
 
   String? imagePath;
@@ -23,10 +25,10 @@ class TaskModel {
   late DateTime updatedAt;
   DateTime? completedAt;
   DateTime? dueDate;
-  late int priority; // 0=low,1=medium,2=high
-  late int depth;
+  late int priority; // 0=low, 1=medium, 2=high
+  late int depth;    // 1=root … 4=max
 
-  @ignore
+  @ignore // assembled in memory by the repository, not stored
   List<TaskModel> subtasks = [];
 
   TaskModel();
@@ -65,6 +67,7 @@ class TaskModel {
   }
 }
 
+/// FNV-1a 64-bit hash — converts a string UUID into an Isar int ID.
 int fastHash(String string) {
   var hash = 0xcbf29ce484222325;
   var i = 0;

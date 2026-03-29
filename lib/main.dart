@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/constants/app_strings.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/router/app_router.dart';
@@ -11,13 +12,13 @@ Future<void> main() async {
   await IsarService.initialize();
   runApp(
     const ProviderScope(
-      child: TaskManagerApp(),
+      child: TaskoraApp(),
     ),
   );
 }
 
-class TaskManagerApp extends ConsumerWidget {
-  const TaskManagerApp({super.key});
+class TaskoraApp extends ConsumerWidget {
+  const TaskoraApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,7 +26,7 @@ class TaskManagerApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title: 'TaskFlow',
+      title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

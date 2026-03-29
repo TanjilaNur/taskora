@@ -9,6 +9,10 @@ import '../datasources/task_local_datasource.dart';
 import '../models/task_model.dart';
 import '../models/task_model_mapper.dart';
 
+/// Concrete implementation of [TaskRepository] backed by Isar.
+///
+/// Tasks are stored flat in the DB. The tree is built in memory
+/// by [_buildTree] before being returned to the domain layer.
 class TaskManagerRepositoryImpl implements TaskRepository {
   final TaskLocalDataSource _dataSource;
   final Uuid _uuid;
@@ -19,10 +23,9 @@ class TaskManagerRepositoryImpl implements TaskRepository {
   })  : _dataSource = dataSource,
         _uuid = uuid ?? const Uuid();
 
+  // ── Tree assembly ─────────────────────────────────────────────────────────
 
-  // ─── Tree Assembly ────────────────────────────────────────────────────────
-
-  /// Assembles a full tree from a flat list of models using parentId links.
+  /// Recursively loads children for [parentId] and assembles a tree.
   Future<List<TaskModel>> _buildTree(String? parentId) async {
     final models = await _dataSource.getModelsByParentId(parentId);
     for (final model in models) {
@@ -31,6 +34,7 @@ class TaskManagerRepositoryImpl implements TaskRepository {
     return models;
   }
 
+  /// Builds a full tree for a single task by id.
   Future<TaskModel?> _buildSingleTree(String id) async {
     final model = await _dataSource.getModelById(id);
     if (model == null) return null;
@@ -38,7 +42,7 @@ class TaskManagerRepositoryImpl implements TaskRepository {
     return model;
   }
 
-  // ─── Repository Methods ───────────────────────────────────────────────────
+  // ── Repository methods ────────────────────────────────────────────────────
 
   @override
   Future<Result<List<Task>>> getRootTasks() async {
@@ -64,9 +68,12 @@ class TaskManagerRepositoryImpl implements TaskRepository {
   @override
   Future<Result<Task>> createTask(Task task) async {
     try {
+      // Assign a real UUID — the entity arrives with id=''
       final model = task.copyWith(id: _uuid.v4()).toModel();
       await _dataSource.saveModel(model);
-      return Ok(model.toEntity());
+      // Reload the full tree so the returned entity has correct subtask state
+      final created = await _buildSingleTree(model.id);
+      return Ok(created!.toEntity());
     } catch (e) {
       return Err(Exception('Failed to create task: $e'));
     }
@@ -109,12 +116,12 @@ class TaskManagerRepositoryImpl implements TaskRepository {
         ..updatedAt = now;
 
       await _dataSource.saveModel(model);
+
+      // Mark all descendants done when completing, undo otherwise
       if (newCompleted) await _cascadeComplete(id, now);
 
-      // Propagate upward: mark parents complete if all siblings done
-      if (model.parentId != null) {
-        await _propagateUpward(model.parentId!, now);
-      }
+      // Update parent chain so ancestor percentages stay accurate
+      if (model.parentId != null) await _propagateUpward(model.parentId!, now);
 
       final updated = await _buildSingleTree(id);
       return Ok(updated!.toEntity());
@@ -123,6 +130,7 @@ class TaskManagerRepositoryImpl implements TaskRepository {
     }
   }
 
+  /// Marks every descendant of [parentId] as complete.
   Future<void> _cascadeComplete(String parentId, DateTime now) async {
     final children = await _dataSource.getModelsByParentId(parentId);
     for (final child in children) {
@@ -136,43 +144,39 @@ class TaskManagerRepositoryImpl implements TaskRepository {
     }
   }
 
-  /// Walk upward from [childParentId]: if ALL siblings of the changed task
-  /// are now complete, mark the parent complete too, then recurse further up.
+  /// Walks up the parent chain.
+  /// If all siblings are done → mark parent done.
+  /// If a sibling was un-done → revert parent back to incomplete.
   Future<void> _propagateUpward(String parentId, DateTime now) async {
     final parent = await _dataSource.getModelById(parentId);
     if (parent == null) return;
 
-    final siblings = await _dataSource.getModelsByParentId(parentId);
-    final allDone = siblings.isNotEmpty && siblings.every((s) => s.isCompleted);
+    // Get all direct children of this parent to check sibling completion
+    final children = await _dataSource.getModelsByParentId(parentId);
+    final allDone  = children.isNotEmpty && children.every((c) => c.isCompleted);
 
     if (allDone && !parent.isCompleted) {
       parent
-        ..isCompleted = true
+        ..isCompleted             = true
         ..manualCompletionPercent = 100.0
-        ..completedAt = now
-        ..updatedAt = now;
+        ..completedAt             = now
+        ..updatedAt               = now;
       await _dataSource.saveModel(parent);
-      // Keep walking up the chain
-      if (parent.parentId != null) {
-        await _propagateUpward(parent.parentId!, now);
-      }
+      if (parent.parentId != null) await _propagateUpward(parent.parentId!, now);
     } else if (!allDone && parent.isCompleted) {
-      // A sibling was un-completed — revert parent back to incomplete
+      // A child was un-completed — revert parent, but preserve any partial %
       parent
-        ..isCompleted = false
-        ..manualCompletionPercent = 0.0
-        ..completedAt = null
-        ..updatedAt = now;
+        ..isCompleted             = false
+        ..manualCompletionPercent = 0.0  // will be recomputed from leaves in memory
+        ..completedAt             = null
+        ..updatedAt               = now;
       await _dataSource.saveModel(parent);
-      if (parent.parentId != null) {
-        await _propagateUpward(parent.parentId!, now);
-      }
+      if (parent.parentId != null) await _propagateUpward(parent.parentId!, now);
     }
   }
 
   @override
-  Future<Result<Task>> updateCompletionPercent(
-      String id, double percent) async {
+  Future<Result<Task>> updateCompletionPercent(String id, double percent) async {
     try {
       final model = await _dataSource.getModelById(id);
       if (model == null) return Err(Exception('Task not found'));
@@ -196,6 +200,8 @@ class TaskManagerRepositoryImpl implements TaskRepository {
       return Err(Exception('Failed to update completion percent: $e'));
     }
   }
+
+  // ── Backup ────────────────────────────────────────────────────────────────
 
   @override
   Future<Result<List<int>>> exportBackup() async {
@@ -226,6 +232,7 @@ class TaskManagerRepositoryImpl implements TaskRepository {
     }
   }
 
+  /// Restore: wipe current data then write backup rows.
   @override
   Future<Result<void>> importBackup(List<int> bytes) async {
     try {

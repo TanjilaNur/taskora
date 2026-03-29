@@ -1,6 +1,8 @@
 import '../../domain/entities/task.dart';
 import 'task_model.dart';
 
+/// Converts a [TaskModel] (Isar) into a [Task] (domain entity).
+/// Recursively converts any pre-loaded subtasks.
 extension TaskModelMapper on TaskModel {
   Task toEntity() {
     return Task(
@@ -23,6 +25,8 @@ extension TaskModelMapper on TaskModel {
   }
 }
 
+/// Converts a [Task] (domain entity) into a flat [TaskModel] for Isar.
+/// Subtasks are intentionally excluded — they are stored as separate rows.
 extension TaskMapper on Task {
   TaskModel toModel() {
     return TaskModel.create(
