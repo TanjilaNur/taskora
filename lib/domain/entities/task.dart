@@ -73,42 +73,27 @@ class Task {
     this.depth = 1,
   });
 
-  /// Completion % calculated from ALL leaves across the entire subtree.
+  /// Completion % calculated by averaging direct children's percentages.
   ///
-  /// Spec: "percentage reflects the proportion of completed subtasks
-  /// across all nesting levels."
+  /// Each direct child computes its own % the same way (recursively),
+  /// so every branch is weighted equally
+  ///   Root
+  ///    ├─ L2-A (leaf, slider = 0%)
+  ///    └─ L2-B (has children)
+  ///         ├─ L3-1 (100%) ├─ L3-2 (100%) ├─ L3-3 (50%) └─ L3-4 (0%)
+  ///   L2-B % = (100+100+50+0)/4 = 62.5%
+  ///   Root % = (0 + 62.5) / 2  = 31.25%
   ///
-  /// Every leaf (task with no children) contributes equally — regardless
-  /// of which branch it lives in. A branch with 4 leaves is 4× more
-  /// influential than a branch with 1 leaf.
   ///
-  /// Leaf value:
-  ///   - completed           → 100%
-  ///   - not completed       → manualCompletionPercent (0–100 via slider)
-  /// Lazily cached leaf values — computed once, reused by all three getters.
-  List<double>? _cachedLeaves;
-  List<double> get _leaves => _cachedLeaves ??= _collectLeaves();
-
   double get completionPercentage {
-    final leaves = _leaves;
-    if (leaves.isEmpty) {
+    if (subtasks.isEmpty) {
+      // Leaf node — use its own completion value
       return isCompleted ? 100.0 : manualCompletionPercent;
     }
-    return leaves.fold(0.0, (sum, v) => sum + v) / leaves.length;
-  }
+    // return leaves.fold(0.0, (sum, v) => sum + v) / leaves.length;
 
-  /// Recursively collects the completion value of every leaf in the subtree.
-  List<double> _collectLeaves() {
-    if (subtasks.isEmpty) return [];
-    final result = <double>[];
-    for (final sub in subtasks) {
-      if (sub.subtasks.isEmpty) {
-        result.add(sub.isCompleted ? 100.0 : sub.manualCompletionPercent);
-      } else {
-        result.addAll(sub._collectLeaves());
-      }
-    }
-    return result;
+    final sum = subtasks.fold(0.0, (accumulatedSum, currentItemOnList) => accumulatedSum + currentItemOnList.completionPercentage);
+    return sum / subtasks.length;
   }
 
   bool get isFullyComplete => completionPercentage >= 100.0;
@@ -117,11 +102,12 @@ class Task {
   bool get isOverdue =>
       dueDate != null && !isCompleted && dueDate!.isBefore(DateTime.now());
 
-  /// Number of leaf tasks fully complete.
-  int get completedSubtaskCount => _leaves.where((v) => v >= 100.0).length;
+  /// Number of immediate subtasks fully complete.
+  int get completedSubtaskCount =>
+      subtasks.where((t) => t.completionPercentage >= 100.0).length;
 
-  /// Total leaf task count.
-  int get totalSubtaskCount => _leaves.length;
+  /// Total immediate subtask count.
+  int get totalSubtaskCount => subtasks.length;
 
   Task copyWith({
     String? id,
