@@ -15,8 +15,8 @@ dependencies:
   riverpod_annotation: ^2.3.5
 
   # Database
-  isar: ^3.1.0+1
-  xxf_isar_flutter_libs: ^3.1.0+2
+  isar: 3.1.0+1
+  isar_flutter_libs: 3.1.0+1
   path_provider: ^2.1.3
 
   # Navigation
@@ -54,7 +54,7 @@ dev_dependencies:
   riverpod_generator: ^2.4.0
   freezed: ^2.5.2
   json_serializable: ^6.8.0
-  isar_generator: ^3.1.0+1
+  isar_generator: 3.1.0+1
 
 flutter:
   uses-material-design: true
