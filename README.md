@@ -72,22 +72,20 @@ The app was built against a formal product specification and satisfies every cor
 
 ### Completion System
 
-Every task's completion percentage is calculated from the **leaves of its entire subtree** — not a simple average of direct children.
+Every task's completion percentage is calculated by **averaging direct children's percentages**.
 
 ```
 Root Task
-  ├─ L2-A  (leaf, slider = 0%)
-  └─ L2-B  (intermediate)
-       ├─ L3-1  (leaf, 100% ✓)
+  ├─ L2-A (leaf, slider = 0%)
+  └─ L2-B (has children)
+       ├─ L3-1 (leaf, 100% ✓)
        ├─ L3-2  (leaf, 100% ✓)
        ├─ L3-3  (leaf, 50% slider)
        └─ L3-4  (leaf, 0%)
 
-Leaves = [L2-A=0, L3-1=100, L3-2=100, L3-3=50, L3-4=0]
-Root %  = (0 + 100 + 100 + 50 + 0) / 5 = 50%
+L2-B % = (100+100+50+0)/4 = 62.5%
+Root %  = (0 + 62.5) / 2  = 31.25%
 ```
-
-**Rule:** collect every leaf (task with no children) across all nesting levels and average their values equally. A branch with 4 leaves contributes 4× as much as a branch with 1 leaf — matching the spec requirement *"proportion of completed subtasks across all nesting levels"*.
 
 **Leaf value:**
 - `isCompleted = true` → `100%`
