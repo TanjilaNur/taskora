@@ -629,9 +629,3 @@ The `TaskRepository` interface is the seam point. To add cloud sync:
 1. Create `RemoteTaskRepositoryImpl` implementing `TaskRepository`
 2. Create `SyncedTaskRepositoryImpl` composing local + remote
 3. Swap the provider in `providers.dart` — **zero changes** to domain or presentation layers
-
----
-
-## 📄 Licence
-
-This project was built as a take-home technical assessment. All rights reserved.
