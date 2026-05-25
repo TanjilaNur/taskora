@@ -27,7 +27,7 @@
 
 **Taskora** is a comprehensive offline-first task management app. Users can create tasks, nest subtasks up to **4 levels deep**, attach thumbnail images, track hierarchical completion percentages, and back up their data — all without an internet connection.
 
-The app was built against a formal product specification and satisfies every core requirement plus all bonus points:
+The app was built against a formal product specification and satisfies every core requirement:
 
 | Requirement | Status |
 |---|---|
