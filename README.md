@@ -45,15 +45,15 @@ The app was built against a formal product specification and satisfies every cor
 | Isar local database with indexed queries | ✅ |
 | Cascade delete on task hierarchies | ✅ |
 | Offline-first | ✅ |
-| **Bonus** — Clean Architecture | ✅ |
-| **Bonus** — Backup export / import (JSON) | ✅ |
-| **Bonus** — Dark / Light / System theme, persisted | ✅ |
-| **Bonus** — Partial completion slider (leaf tasks) | ✅ |
-| **Bonus** — Shimmer loading skeletons | ✅ |
-| **Bonus** — Subtle animations (flutter_animate) | ✅ |
-| **Bonus** — Filter: All / Active / Completed | ✅ |
-| **Bonus** — Due dates & overdue indicators | ✅ |
-| **Bonus** — Task priority (Low / Medium / High) | ✅ |
+| Clean Architecture | ✅ |
+| Backup export / import (JSON) | ✅ |
+| Dark / Light / System theme, persisted | ✅ |
+| Partial completion slider (leaf tasks) | ✅ |
+| Shimmer loading skeletons | ✅ |
+| Subtle animations (flutter_animate) | ✅ |
+| Filter: All / Active / Completed | ✅ |
+| Due dates & overdue indicators | ✅ |
+| Task priority (Low / Medium / High) | ✅ |
 
 ---
 
