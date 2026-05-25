@@ -517,12 +517,7 @@ flutter test test/unit/presentation/state/task_list_notifier_test.dart --reporte
 flutter pub get
 ```
 
-### 2 — Generate Isar schema & code-gen files *(required before first build)*
-```bash
-dart run build_runner build --delete-conflicting-outputs
-```
-
-### 3 — Run on any device
+### 2 — Run on any device
 ```bash
 flutter run
 ```
@@ -541,7 +536,6 @@ cd ios && pod install && cd ..
 ```bash
 open ios/Runner.xcworkspace
 ```
-> ⚠️ Always open **`Runner.xcworkspace`** — never `Runner.xcodeproj`. Opening `.xcodeproj` skips CocoaPods and the build will fail.
 
 #### Step 3 — Select a simulator or real device
 In the Xcode toolbar click the device picker next to ▶ and choose a simulator (e.g. **iPhone 16**) or a connected device.
@@ -581,7 +575,6 @@ Press **⌘ R**. First build takes 2–5 min (Isar + pods compile from source). 
 |---|---|
 | `pod install` version conflict | `pod repo update && pod install` |
 | `Runner.xcworkspace` not found | `flutter pub get` → `pod install` |
-| `No such module 'isar_flutter_libs'` | `dart run build_runner build --delete-conflicting-outputs` then rebuild |
 | Signing error on real device | Set Apple Team in Xcode → Signing & Capabilities |
 | Blank white screen on simulator | `flutter clean && flutter pub get` then rebuild |
 | Stale cache build errors | Xcode → **Product → Clean Build Folder** (⇧⌘K) then rebuild |
@@ -594,7 +587,7 @@ Press **⌘ R**. First build takes 2–5 min (Isar + pods compile from source). 
 | Package | Version | Purpose |
 |---|---|---|
 | `flutter_riverpod` | ^2.5.1 | State management & dependency injection |
-| `isar` + `xxf_isar_flutter_libs` | ^3.1.0 | Local database (Rust-powered, indexed) |
+| `isar` + `isar_flutter_libs` | ^3.1.0 | Local database (Rust-powered, indexed) |
 | `go_router` | ^13.2.0 | Declarative navigation |
 | `image_picker` | ^1.1.2 | Gallery & camera image selection |
 | `flutter_image_compress` | ^2.2.0 | 250×250 JPEG compression |
